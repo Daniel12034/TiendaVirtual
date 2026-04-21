@@ -26,7 +26,7 @@ export class NavbarView {
             data-action="go-catalog"
             aria-label="Ir al inicio"
           >
-            <span class="navbar__logo-mark">DGM</span>
+            <span class="navbar__logo-mark">TV</span>
             <span class="navbar__logo-text">Tienda Online</span>
           </button>
 
@@ -40,7 +40,7 @@ export class NavbarView {
               value="${escapeHtml(state.searchQuery)}"
               autocomplete="off"
             />
-            <button type="submit" class="navbar__search-button">Buscar</button>
+            <button type="submit" class="navbar__search-button"></button>
           </form>
 
           <div class="navbar__actions">
