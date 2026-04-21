@@ -1,0 +1,88 @@
+import { CART_CHANGED_EVENT } from "../types.js";
+import { escapeHtml } from "../utils/formatters.js";
+export class NavbarView {
+    constructor(root, documentRef) {
+        this.root = root;
+        this.documentRef = documentRef;
+        this.isScrolled = false;
+        this.handleCartChanged = (event) => {
+            const badge = this.root.querySelector("[data-role='cart-badge']");
+            if (!badge) {
+                return;
+            }
+            badge.textContent = String(event.detail.totalItems);
+        };
+        this.documentRef.addEventListener(CART_CHANGED_EVENT, this.handleCartChanged);
+    }
+    render(state) {
+        const accountLabel = state.usuarioActual ? state.usuarioActual.nombre : "Ingresar";
+        const accountAction = state.usuarioActual ? "go-login" : "go-login";
+        this.root.innerHTML = `
+      <header class="navbar${this.isScrolled ? " navbar--scrolled" : ""}" aria-label="Navegacion principal">
+        <div class="navbar__inner">
+          <button
+            type="button"
+            class="navbar__logo"
+            data-action="go-catalog"
+            aria-label="Ir al inicio"
+          >
+            <span class="navbar__logo-mark">DGM</span>
+            <span class="navbar__logo-text">Tienda Online</span>
+          </button>
+
+          <form class="navbar__search" data-form="search" role="search">
+            <label class="navbar__search-icon" for="navbar-search"></label>
+            <input
+              id="navbar-search"
+              name="search"
+              type="search"
+              placeholder="Busca productos, categorias y novedades"
+              value="${escapeHtml(state.searchQuery)}"
+              autocomplete="off"
+            />
+            <button type="submit" class="navbar__search-button">Buscar</button>
+          </form>
+
+          <div class="navbar__actions">
+            <button
+              type="button"
+              class="navbar__link ${state.currentRoute === "catalogo" ? "navbar__link--active" : ""}"
+              data-action="go-catalog"
+            >
+              Inicio
+            </button>
+
+            <button
+              type="button"
+              class="navbar__account"
+              data-action="${accountAction}"
+              aria-label="Cuenta"
+            >
+              <span class="navbar__account-icon" aria-hidden="true">ACC</span>
+              <span class="navbar__account-label">${escapeHtml(accountLabel)}</span>
+            </button>
+
+            <button
+              type="button"
+              class="navbar__cart"
+              data-action="toggle-cart"
+              aria-label="Abrir carrito"
+            >
+              <span class="navbar__cart-icon" aria-hidden="true">CART</span>
+              <span class="navbar__cart-label">Carrito</span>
+              <span class="navbar__badge" data-role="cart-badge">${state.cartCount}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+    `;
+    }
+    setScrolled(isScrolled) {
+        this.isScrolled = isScrolled;
+        const navbar = this.root.querySelector(".navbar");
+        if (!navbar) {
+            return;
+        }
+        navbar.classList.toggle("navbar--scrolled", isScrolled);
+    }
+}
