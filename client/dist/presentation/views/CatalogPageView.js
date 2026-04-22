@@ -134,25 +134,10 @@ export class CatalogPageView {
         <div class="hero-banner__spotlight">
           <div class="hero-banner__spotlight-header">
             <span class="hero-banner__label">Envio rapido</span>
-            <strong>Despachos claros, amistades verdaderas!</strong>
+            <strong>Despachos claros, amistades duraderas!</strong>
             <p>
-              Preparacion agil y excelente seguimiento.
+              Preparacion ágil y claro seguimiento.
             </p>
-          </div>
-
-          <div class="hero-banner__stats" aria-label="Resumen de envio">
-            <article class="hero-banner__stat">
-              <strong>24h</strong>
-              <span>alistamiento promedio</span>
-            </article>
-            <article class="hero-banner__stat">
-              <strong>3 zonas</strong>
-              <span>cobertura prioritaria</span>
-            </article>
-            <article class="hero-banner__stat">
-              <strong>Live</strong>
-              <span>estado visible del pedido</span>
-            </article>
           </div>
 
           <div class="hero-banner__route" aria-hidden="true">

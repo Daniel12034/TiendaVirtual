@@ -1,21 +1,21 @@
 import { formatCurrency, formatDateTime, escapeHtml } from "../utils/formatters.js";
 export class AuthPageView {
-    constructor(root) {
-        this.root = root;
-    }
-    render(state) {
-        if (state.usuarioActual) {
-            const historialMarkup = state.historial.length === 0
-                ? `
+  constructor(root) {
+    this.root = root;
+  }
+  render(state) {
+    if (state.usuarioActual) {
+      const historialMarkup = state.historial.length === 0
+        ? `
             <article class="account-card">
               <p>Aun no tienes compras registradas.</p>
             </article>
           `
-                : state.historial
-                    .slice()
-                    .reverse()
-                    .slice(0, 4)
-                    .map((pedido) => `
+        : state.historial
+          .slice()
+          .reverse()
+          .slice(0, 4)
+          .map((pedido) => `
                   <article class="order-card">
                     <div>
                       <strong>Pedido ${escapeHtml(pedido.id.slice(0, 8).toUpperCase())}</strong>
@@ -24,8 +24,8 @@ export class AuthPageView {
                     <strong>${formatCurrency(pedido.total)}</strong>
                   </article>
                 `)
-                    .join("");
-            this.root.innerHTML = `
+          .join("");
+      this.root.innerHTML = `
         <section class="auth-page">
           <div class="section-header">
             <div>
@@ -52,9 +52,9 @@ export class AuthPageView {
           </div>
         </section>
       `;
-            return;
-        }
-        this.root.innerHTML = `
+      return;
+    }
+    this.root.innerHTML = `
       <section class="auth-page">
         <div class="section-header">
           <div>
@@ -94,11 +94,12 @@ export class AuthPageView {
           <article class="auth-card ${state.mode === "login" ? "" : "u-hidden"}">
             <h2>Bienvenido otra vez</h2>
             <form data-form="login" novalidate>
+              <br>
               <div class="field">
                 <label for="login-email">Email</label>
                 <input id="login-email" name="email" type="email" autocomplete="email" />
               </div>
-
+              <br>
               <div class="field">
                 <label for="login-password">Contrasena</label>
                 <input
@@ -108,12 +109,13 @@ export class AuthPageView {
                   autocomplete="current-password"
                 />
               </div>
-
+              <br>
               <button type="submit" class="button button--primary button--wide">
                 Entrar
               </button>
             </form>
 
+              <br>
             <button
               type="button"
               class="link-button"
@@ -127,16 +129,15 @@ export class AuthPageView {
           <article class="auth-card ${state.mode === "register" ? "" : "u-hidden"}">
             <h2>Crea tu cuenta</h2>
             <form data-form="register" novalidate>
+              <br>
               <div class="field">
                 <label for="register-name">Nombre</label>
                 <input id="register-name" name="nombre" type="text" autocomplete="name" />
               </div>
-
               <div class="field">
                 <label for="register-email">Email</label>
                 <input id="register-email" name="email" type="email" autocomplete="email" />
               </div>
-
               <div class="field">
                 <label for="register-password">Contrasena</label>
                 <input
@@ -147,11 +148,11 @@ export class AuthPageView {
                   autocomplete="new-password"
                 />
               </div>
-
               <div class="field">
                 <label for="register-birthdate">Fecha de nacimiento</label>
                 <input id="register-birthdate" name="fechaNacimiento" type="date" />
               </div>
+              <br>
 
               <button type="submit" class="button button--primary button--wide">
                 Crear cuenta
@@ -162,17 +163,20 @@ export class AuthPageView {
           <article class="auth-card ${state.mode === "recover" ? "" : "u-hidden"}">
             <h2>Recupera tu contrasena</h2>
             <p class="auth-page__support">
-              Ingresa tu correo registrado. Como esta solucion corre solo en
-              frontend, los enlaces enviados quedan visibles en la bandeja local
-              de esta misma pantalla.
+              Ingresa tu correo ya registrado.
             </p>
-
+            <p class="auth-page__support">
+              (Como esta solucion corre solo en
+              frontend, los enlaces enviados quedan visibles en la bandeja local
+              de esta misma pantalla.)
+            </p>
+            <br>
             <form data-form="request-password-reset" novalidate>
               <div class="field">
                 <label for="recover-email">Email</label>
                 <input id="recover-email" name="email" type="email" autocomplete="email" />
               </div>
-
+            <br>
               <button type="submit" class="button button--primary button--wide">
                 Enviar enlace de recuperacion
               </button>
@@ -181,7 +185,7 @@ export class AuthPageView {
         </div>
 
         ${state.recoveryInbox.length > 0
-            ? `
+        ? `
               <article class="auth-card auth-card--single">
                 <div class="section-panel__header">
                   <div>
@@ -192,16 +196,16 @@ export class AuthPageView {
 
                 <div class="recovery-list">
                   ${state.recoveryInbox
-                .map((item) => `
+          .map((item) => `
                         <article class="recovery-card">
                           <div>
                             <strong>${escapeHtml(item.email)}</strong>
                             <p>
                               ${item.status === "pending"
-                ? `Disponible hasta ${escapeHtml(formatDateTime(item.expiresAt))}`
-                : item.status === "used"
-                    ? "Enlace ya utilizado"
-                    : "Enlace vencido"}
+              ? `Disponible hasta ${escapeHtml(formatDateTime(item.expiresAt))}`
+              : item.status === "used"
+                ? "Enlace ya utilizado"
+                : "Enlace vencido"}
                             </p>
                           </div>
 
@@ -213,12 +217,12 @@ export class AuthPageView {
                           </a>
                         </article>
                       `)
-                .join("")}
+          .join("")}
                 </div>
               </article>
             `
-            : ""}
+        : ""}
       </section>
     `;
-    }
+  }
 }
