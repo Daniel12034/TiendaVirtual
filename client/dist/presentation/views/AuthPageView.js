@@ -122,7 +122,7 @@ export class AuthPageView {
               data-action="switch-auth-mode"
               data-mode="recover"
             >
-              Olvide mi contrasena
+              ¿Olvidaste tu contraseña?
             </button>
           </article>
 

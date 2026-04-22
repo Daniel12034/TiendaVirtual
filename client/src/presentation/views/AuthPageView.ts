@@ -2,7 +2,7 @@ import { AuthPageState } from "../types.js";
 import { formatCurrency, formatDateTime, escapeHtml } from "../utils/formatters.js";
 
 export class AuthPageView {
-  constructor(private readonly root: HTMLElement) {}
+  constructor(private readonly root: HTMLElement) { }
 
   public render(state: AuthPageState): void {
     if (state.usuarioActual) {
@@ -14,11 +14,11 @@ export class AuthPageView {
             </article>
           `
           : state.historial
-              .slice()
-              .reverse()
-              .slice(0, 4)
-              .map(
-                (pedido) => `
+            .slice()
+            .reverse()
+            .slice(0, 4)
+            .map(
+              (pedido) => `
                   <article class="order-card">
                     <div>
                       <strong>Pedido ${escapeHtml(pedido.id.slice(0, 8).toUpperCase())}</strong>
@@ -27,10 +27,10 @@ export class AuthPageView {
                     <strong>${formatCurrency(pedido.total)}</strong>
                   </article>
                 `
-              )
-              .join("");
+            )
+            .join("");
 
-            this.root.innerHTML = `
+      this.root.innerHTML = `
         <section class="auth-page">
           <div class="section-header">
             <div>
@@ -127,7 +127,7 @@ export class AuthPageView {
               data-action="switch-auth-mode"
               data-mode="recover"
             >
-              Olvide mi contrasena
+              ¿Olvidaste tu contraseña?
             </button>
           </article>
 
