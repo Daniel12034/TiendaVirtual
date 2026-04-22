@@ -1,21 +1,21 @@
 import { formatCurrency, formatDateTime, escapeHtml } from "../utils/formatters.js";
 export class AuthPageView {
-  constructor(root) {
-    this.root = root;
-  }
-  render(state) {
-    if (state.usuarioActual) {
-      const historialMarkup = state.historial.length === 0
-        ? `
+    constructor(root) {
+        this.root = root;
+    }
+    render(state) {
+        if (state.usuarioActual) {
+            const historialMarkup = state.historial.length === 0
+                ? `
             <article class="account-card">
               <p>Aun no tienes compras registradas.</p>
             </article>
           `
-        : state.historial
-          .slice()
-          .reverse()
-          .slice(0, 4)
-          .map((pedido) => `
+                : state.historial
+                    .slice()
+                    .reverse()
+                    .slice(0, 4)
+                    .map((pedido) => `
                   <article class="order-card">
                     <div>
                       <strong>Pedido ${escapeHtml(pedido.id.slice(0, 8).toUpperCase())}</strong>
@@ -24,8 +24,8 @@ export class AuthPageView {
                     <strong>${formatCurrency(pedido.total)}</strong>
                   </article>
                 `)
-          .join("");
-      this.root.innerHTML = `
+                    .join("");
+            this.root.innerHTML = `
         <section class="auth-page">
           <div class="section-header">
             <div>
@@ -52,9 +52,9 @@ export class AuthPageView {
           </div>
         </section>
       `;
-      return;
-    }
-    this.root.innerHTML = `
+            return;
+        }
+        this.root.innerHTML = `
       <section class="auth-page">
         <div class="section-header">
           <div>
@@ -185,7 +185,7 @@ export class AuthPageView {
         </div>
 
         ${state.recoveryInbox.length > 0
-        ? `
+            ? `
               <article class="auth-card auth-card--single">
                 <div class="section-panel__header">
                   <div>
@@ -196,16 +196,16 @@ export class AuthPageView {
 
                 <div class="recovery-list">
                   ${state.recoveryInbox
-          .map((item) => `
+                .map((item) => `
                         <article class="recovery-card">
                           <div>
                             <strong>${escapeHtml(item.email)}</strong>
                             <p>
                               ${item.status === "pending"
-              ? `Disponible hasta ${escapeHtml(formatDateTime(item.expiresAt))}`
-              : item.status === "used"
-                ? "Enlace ya utilizado"
-                : "Enlace vencido"}
+                ? `Disponible hasta ${escapeHtml(formatDateTime(item.expiresAt))}`
+                : item.status === "used"
+                    ? "Enlace ya utilizado"
+                    : "Enlace vencido"}
                             </p>
                           </div>
 
@@ -217,12 +217,12 @@ export class AuthPageView {
                           </a>
                         </article>
                       `)
-          .join("")}
+                .join("")}
                 </div>
               </article>
             `
-        : ""}
+            : ""}
       </section>
     `;
-  }
+    }
 }

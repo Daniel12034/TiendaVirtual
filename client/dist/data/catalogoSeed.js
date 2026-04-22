@@ -45,7 +45,7 @@ export function crearCatalogoDemo() {
         },
         {
             id: "cat-hogar",
-            nombre: "Casa Viva",
+            nombre: "Hogar y Decoracion",
             descripcion: "Detalles de hogar que suman textura, calidez visual y pequenos rituales."
         },
         {
@@ -64,9 +64,9 @@ export function crearCatalogoDemo() {
             etiqueta: "Audio preciso",
             stock: 0,
             variantes: [
-                { id: "var-nimbus-grafito", nombre: "Color", valor: "Grafito", stock: 6 },
-                { id: "var-nimbus-marfil", nombre: "Color", valor: "Marfil", stock: 3 },
-                { id: "var-nimbus-indigo", nombre: "Color", valor: "Indigo", stock: 4 }
+                { id: "var-nimbus-grafito", nombre: "Color", valor: "Grafito", stock: 2 },
+                { id: "var-nimbus-marfil", nombre: "Color", valor: "Marfil", stock: 5 },
+                { id: "var-nimbus-indigo", nombre: "Color", valor: "Indigo", stock: 1 }
             ],
             imagen: {
                 alt: "Par de auriculares con cable sobre una superficie clara",
@@ -156,7 +156,7 @@ export function crearCatalogoDemo() {
             descripcion: "Microfono dinamico con presencia clara para llamadas, grabaciones de voz y contenido rapido sin complicar la cadena de audio.",
             precio: 209900,
             etiqueta: "Voz nitida",
-            stock: 7,
+            stock: 0,
             imagen: {
                 alt: "Microfono dinamico en primer plano",
                 url: "https://pd.w.org/2024/02/22965c09f88334f67.08709411-2048x1365.jpg",
@@ -716,6 +716,177 @@ export function crearCatalogoDemo() {
                 licenseLabel: "CC0 1.0",
                 width: 1536,
                 height: 2048
+            }
+        },
+        {
+            id: "prod-monitor-led-24",
+            categoriaId: "cat-escritorio",
+            nombre: "Monitor LED 24 pulgadas Full HD",
+            descripcion: "Monitor con resolucion Full HD, panel IPS y bordes delgados, ideal para trabajo, estudio o entretenimiento.",
+            precio: 599900,
+            etiqueta: "Productividad",
+            stock: 0,
+            variantes: [],
+            imagen: {
+                alt: "Monitor moderno sobre escritorio",
+                url: "https://images.unsplash.com/photo-1621637937627-fa293f158103?q=80&w=1344&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                sourceName: "Unsplash",
+                sourcePageUrl: "https://images.unsplash.com/photo-1621637937627-fa293f158103?q=80&w=1344&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                creatorName: "Boicu Andrei",
+                creatorUrl: null,
+                licenseLabel: "CC0 1.0",
+                width: 2048,
+                height: 1365
+            }
+        },
+        {
+            id: "prod-cargador-multiusb",
+            categoriaId: "cat-audio",
+            nombre: "Cargador Multi USB 4 Puertos",
+            descripcion: "Cargador compacto con multiples salidas USB para cargar varios dispositivos simultaneamente con proteccion inteligente.",
+            precio: 69900,
+            etiqueta: "Utilidad",
+            stock: 0,
+            variantes: [],
+            imagen: {
+                alt: "Cargador USB multiple",
+                url: "https://images.unsplash.com/photo-1616578781575-4e5617e69592?q=80&w=928&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                sourceName: "Unsplash",
+                sourcePageUrl: "https://images.unsplash.com/photo-1616578781575-4e5617e69592?q=80&w=928&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D/",
+                creatorName: "Lasse Jnesen",
+                creatorUrl: null,
+                licenseLabel: "CC0 1.0",
+                width: 2048,
+                height: 1365
+            }
+        },
+        {
+            id: "prod-cafetera-goteo",
+            categoriaId: "cat-cocina",
+            nombre: "Cafetera de Goteo 12 Tazas",
+            descripcion: "Cafetera electrica con filtro reutilizable y sistema antigoteo, ideal para preparar grandes cantidades de cafe.",
+            precio: 189900,
+            etiqueta: "Cafe",
+            stock: 0,
+            variantes: [],
+            imagen: {
+                alt: "Cafetera preparando cafe",
+                url: "https://images.unsplash.com/photo-1599861495616-42f603e7b25a?q=80&w=830&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                sourceName: "Unsplash",
+                sourcePageUrl: "https://images.unsplash.com/photo-1599861495616-42f603e7b25a?q=80&w=830&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                creatorName: "Kevin Canlas",
+                creatorUrl: null,
+                licenseLabel: "CC0 1.0",
+                width: 2048,
+                height: 1365
+            }
+        },
+        {
+            id: "prod-lonchera-termica",
+            categoriaId: "cat-viaje",
+            nombre: "Lonchera Termica Portatil",
+            descripcion: "Bolsa termica con aislamiento interior que mantiene alimentos frescos o calientes durante varias horas.",
+            precio: 54900,
+            etiqueta: "Práctico",
+            stock: 0,
+            variantes: [],
+            imagen: {
+                alt: "Bolsa termica para alimentos",
+                url: "https://images.unsplash.com/photo-1642705625519-ac6534e6c010?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                sourceName: "Unsplash",
+                sourcePageUrl: "https://images.unsplash.com/photo-1642705625519-ac6534e6c010?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D/",
+                creatorName: "Sandra Harris",
+                creatorUrl: null,
+                licenseLabel: "CC0 1.0",
+                width: 2048,
+                height: 1365
+            }
+        },
+        {
+            id: "prod-cojin-decorativo",
+            categoriaId: "cat-hogar",
+            nombre: "Cojin Decorativo Textil",
+            descripcion: "Cojin suave con funda removible y diseño moderno, perfecto para salas y habitaciones.",
+            precio: 44900,
+            etiqueta: "Decor",
+            stock: 0,
+            variantes: [],
+            imagen: {
+                alt: "Cojin sobre sofa",
+                url: "https://plus.unsplash.com/premium_photo-1763466939922-97046d7eb3f8?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                sourceName: "Unsplash",
+                sourcePageUrl: "https://images.unsplash.com/photo-1763466939922-97046d7eb3f8?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                creatorName: "Karolina Graboska",
+                creatorUrl: null,
+                licenseLabel: "CC0 1.0",
+                width: 2048,
+                height: 1365
+            }
+        },
+        {
+            id: "prod-tenis-casuales",
+            categoriaId: "cat-estilo",
+            nombre: "Tenis Casuales Urbanos",
+            descripcion: "Zapatillas ligeras con suela flexible, ideales para uso diario y caminatas urbanas.",
+            precio: 199900,
+            etiqueta: "Urbano",
+            stock: 0,
+            variantes: [
+                { id: "var-tenis-42", nombre: "Talla", valor: "42", stock: 2 },
+                { id: "var-tenis-41", nombre: "Talla", valor: "41", stock: 3 }
+            ],
+            imagen: {
+                alt: "Tenis blancos casuales",
+                url: "https://images.unsplash.com/photo-1771049873881-45b23a2e9847?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                sourceName: "Unsplash",
+                sourcePageUrl: "https://images.unsplash.com/photo-1771049873881-45b23a2e9847?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                creatorName: "Fujiphilm",
+                creatorUrl: null,
+                licenseLabel: "CC0 1.0",
+                width: 2048,
+                height: 1365
+            }
+        },
+        {
+            id: "prod-audifonos-gamer",
+            categoriaId: "cat-audio",
+            nombre: "Audifonos Gamer con Microfono",
+            descripcion: "Audifonos over-ear con sonido envolvente, microfono ajustable y almohadillas acolchadas.",
+            precio: 159900,
+            etiqueta: "Gaming",
+            stock: 0,
+            variantes: [],
+            imagen: {
+                alt: "Audifonos gamer",
+                url: "https://images.unsplash.com/photo-1610041321327-b794c052db27?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                sourceName: "Unsplash",
+                sourcePageUrl: "https://images.unsplash.com/photo-1610041321327-b794c052db27?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                creatorName: "Fausto Sandoval",
+                creatorUrl: null,
+                licenseLabel: "CC0 1.0",
+                width: 2048,
+                height: 1365
+            }
+        },
+        {
+            id: "prod-mesa-plegable",
+            categoriaId: "cat-hogar",
+            nombre: "Mesa Plegable Multifuncional",
+            descripcion: "Mesa ligera y resistente, facil de almacenar y perfecta para espacios pequeños o uso temporal.",
+            precio: 139900,
+            etiqueta: "Funcional",
+            stock: 0,
+            variantes: [],
+            imagen: {
+                alt: "Mesa plegable",
+                url: "https://images.unsplash.com/photo-1678690832886-046d6848422c?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                sourceName: "Unsplash",
+                sourcePageUrl: "https://images.unsplash.com/photo-1678690832886-046d6848422c?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                creatorName: "Carriza Maiquez",
+                creatorUrl: null,
+                licenseLabel: "CC0 1.0",
+                width: 2048,
+                height: 1365
             }
         }
     ];
