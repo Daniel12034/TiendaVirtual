@@ -32,7 +32,7 @@ export class NavbarView {
             aria-label="Ir al inicio"
           >
             <span class="navbar__logo-mark">TV</span>
-            <span class="navbar__logo-text">Tienda Online</span>
+            <span class="navbar__logo-text">Tienda Virtual</span>
           </button>
 
           <form class="navbar__search" data-form="search" role="search">
