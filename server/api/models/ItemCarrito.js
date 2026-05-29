@@ -19,9 +19,14 @@ module.exports = {
       min: 1
     },
 
-    precioUnitario: {
+    precio_unitario: {
       type: 'number',
       columnType: 'decimal(10,2)',
+      required: true
+    },
+
+    producto: {
+      model: 'producto',
       required: true
     },
 
@@ -32,7 +37,6 @@ module.exports = {
 
     variante: {
       model: 'varianteproducto',
-      required: true
     }
 
   }

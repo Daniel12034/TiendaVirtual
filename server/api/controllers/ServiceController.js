@@ -1,21 +1,19 @@
-/**
- * ServiceController
- *
- * @description :: Server-side actions for handling incoming requests.
- * @help        :: See https://sailsjs.com/docs/concepts/actions
- */
+const ActionService = require('../services/ActionService');
 
 module.exports = {
-  
-
-  /**
-   * `ServiceController.AuthService()`
-   */
   AuthService: async function (req, res) {
-    return res.json({
-      todo: 'AuthService() is not implemented yet!'
+    return await ActionService.handleResponse(res, async () => {
+      return {
+        ok: true,
+        services: [
+          'AuthService',
+          'SessionService',
+          'CartService',
+          'PedidoService',
+          'InventoryService'
+        ]
+      };
     });
   }
-
 };
 

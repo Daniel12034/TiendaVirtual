@@ -17,7 +17,7 @@ module.exports = {
 
       total += (
         item.cantidad *
-        item.precioUnitario
+        item.precio_unitario
       );
 
     }

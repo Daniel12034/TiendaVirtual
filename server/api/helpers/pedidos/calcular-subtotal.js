@@ -9,7 +9,7 @@ module.exports = {
             required: true
         },
 
-        precioUnitario: {
+        precio_unitario: {
             type: 'number',
             required: true
         }
@@ -20,7 +20,7 @@ module.exports = {
 
         return (
             inputs.cantidad *
-            inputs.precioUnitario
+            inputs.precio_unitario
         );
 
     }

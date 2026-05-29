@@ -31,7 +31,7 @@ module.exports = {
         }
 
         return (
-            new Date(sesion.fechaExpiracion) >
+            new Date(sesion.fecha_expiracion) >
             new Date()
         );
 

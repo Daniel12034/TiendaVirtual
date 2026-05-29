@@ -35,7 +35,7 @@ module.exports = {
       protect: true
     },
 
-    fechaNacimiento: {
+    fecha_nacimiento: {
       type: 'ref',
       columnType: 'datetime'
     },

@@ -1,28 +1,23 @@
 module.exports = {
-
-
   friendlyName: 'Logout',
-
-
   description: 'Logout usuario.',
-
-
   inputs: {
-
+    token: {
+      type: 'string',
+      required: false
+    },
+    sessionId: {
+      type: 'string',
+      required: false
+    }
   },
-
-
-  exits: {
-
-  },
-
-
+  exits: {},
   fn: async function (inputs) {
+    const ActionService = require('../../services/ActionService');
+    const AuthService = require('../../services/AuthService');
 
-    // All done.
-    return;
-
+    return await ActionService.handleResponse(this.res, async () => {
+      return await AuthService.logout(inputs);
+    });
   }
-
-
 };

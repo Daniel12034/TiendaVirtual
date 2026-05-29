@@ -6,6 +6,13 @@ module.exports = {
 
   attributes: {
 
+    id: {
+      type: 'string',
+      columnType: 'uuid',
+      required: true,
+      unique: true
+    },
+
     telefono: {
       type: 'string',
       maxLength: 20

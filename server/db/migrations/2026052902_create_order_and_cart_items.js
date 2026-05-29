@@ -3,8 +3,8 @@ const UUID_PK = (table) => {
 };
 
 const TIMESTAMP_COLUMNS = (table) => {
-  table.bigInteger("createdAt").notNullable();
-  table.bigInteger("updatedAt").notNullable();
+  table.bigInteger("created_at").notNullable();
+  table.bigInteger("updated_at").notNullable();
 };
 
 const AUTOCREATED_DATETIME = (knex, table, name) => {
@@ -17,7 +17,14 @@ exports.up = async function up(knex) {
       UUID_PK(table);
 
       table.integer("cantidad").unsigned().notNullable();
-      table.decimal("precioUnitario", 10, 2).notNullable();
+      table.decimal("precio_unitario", 10, 2).notNullable();
+      table
+        .uuid("producto")
+        .notNullable()
+        .references("id")
+        .inTable("productos")
+        .onUpdate("CASCADE")
+        .onDelete("CASCADE");
       table
         .uuid("carrito")
         .notNullable()
@@ -27,11 +34,11 @@ exports.up = async function up(knex) {
         .onDelete("CASCADE");
       table
         .uuid("variante")
-        .notNullable()
+        .nullable()
         .references("id")
         .inTable("variantes_producto")
         .onUpdate("CASCADE")
-        .onDelete("CASCADE");
+        .onDelete("SET NULL");
 
       TIMESTAMP_COLUMNS(table);
     })
@@ -58,7 +65,14 @@ exports.up = async function up(knex) {
       UUID_PK(table);
 
       table.integer("cantidad").unsigned().notNullable();
-      table.decimal("precioUnitario", 10, 2).notNullable();
+      table.decimal("precio_unitario", 10, 2).notNullable();
+      table
+        .uuid("producto")
+        .notNullable()
+        .references("id")
+        .inTable("productos")
+        .onUpdate("CASCADE")
+        .onDelete("CASCADE");
       table
         .uuid("pedido")
         .notNullable()
@@ -68,11 +82,11 @@ exports.up = async function up(knex) {
         .onDelete("CASCADE");
       table
         .uuid("variante")
-        .notNullable()
+        .nullable()
         .references("id")
         .inTable("variantes_producto")
         .onUpdate("CASCADE")
-        .onDelete("CASCADE");
+        .onDelete("SET NULL");
 
       TIMESTAMP_COLUMNS(table);
     });

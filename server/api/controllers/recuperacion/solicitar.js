@@ -1,8 +1,8 @@
 module.exports = {
-  friendlyName: 'Generar desde carrito',
-  description: '',
+  friendlyName: 'Solicitar recuperacion',
+  description: 'Genera un enlace de recuperacion de contrasena.',
   inputs: {
-    clienteId: {
+    email: {
       type: 'string',
       required: true
     }
@@ -10,10 +10,10 @@ module.exports = {
   exits: {},
   fn: async function (inputs) {
     const ActionService = require('../../services/ActionService');
-    const PedidoService = require('../../services/PedidoService');
+    const PasswordRecoveryService = require('../../services/PasswordRecoveryService');
 
     return await ActionService.handleResponse(this.res, async () => {
-      return await PedidoService.generarPedidoDesdeCarrito(inputs.clienteId);
+      return await PasswordRecoveryService.requestRecovery(inputs.email);
     });
   }
 };

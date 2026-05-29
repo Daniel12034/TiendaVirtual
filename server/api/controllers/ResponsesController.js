@@ -1,21 +1,12 @@
-/**
- * ResponsesController
- *
- * @description :: Server-side actions for handling incoming requests.
- * @help        :: See https://sailsjs.com/docs/concepts/actions
- */
+const ActionService = require('../services/ActionService');
 
 module.exports = {
-  
-
-  /**
-   * `ResponsesController.unauthorized()`
-   */
   unauthorized: async function (req, res) {
-    return res.json({
-      todo: 'unauthorized() is not implemented yet!'
+    return await ActionService.handleResponse(res, async () => {
+      throw Object.assign(new Error('No autorizado'), {
+        statusCode: 401
+      });
     });
   }
-
 };
 

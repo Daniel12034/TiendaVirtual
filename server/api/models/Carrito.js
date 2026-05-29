@@ -13,7 +13,7 @@ module.exports = {
       unique: true
     },
 
-    fechaCreacion: {
+    fecha_creacion: {
       type: 'ref',
       columnType: 'datetime',
       autoCreatedAt: true

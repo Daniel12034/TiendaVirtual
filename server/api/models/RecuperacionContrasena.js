@@ -1,8 +1,6 @@
-// api/models/Sesion.js
-
 module.exports = {
 
-  tableName: 'sesiones',
+  tableName: 'recuperaciones_contrasena',
 
   attributes: {
 
@@ -13,16 +11,22 @@ module.exports = {
       unique: true
     },
 
+    email: {
+      type: 'string',
+      required: true,
+      isEmail: true
+    },
+
     token: {
       type: 'string',
       required: true,
       unique: true
     },
 
-    fecha_inicio: {
+    fecha_solicitud: {
       type: 'ref',
       columnType: 'datetime',
-      required: true
+      autoCreatedAt: true
     },
 
     fecha_expiracion: {
@@ -31,15 +35,19 @@ module.exports = {
       required: true
     },
 
+    fecha_consumo: {
+      type: 'ref',
+      columnType: 'datetime',
+    },
+
     estado: {
       type: 'string',
-      isIn: ['ACTIVA', 'EXPIRADA', 'INVALIDA'],
-      defaultsTo: 'ACTIVA'
+      isIn: ['PENDIENTE', 'EXPIRADA', 'USADA'],
+      defaultsTo: 'PENDIENTE'
     },
 
     usuario: {
       model: 'usuario',
-      required: true
     }
 
   }

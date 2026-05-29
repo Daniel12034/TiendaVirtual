@@ -1,8 +1,8 @@
 module.exports = {
-  friendlyName: 'Generar desde carrito',
-  description: '',
+  friendlyName: 'Obtener carrito',
+  description: 'Obtiene el carrito por id con sus items.',
   inputs: {
-    clienteId: {
+    carritoId: {
       type: 'string',
       required: true
     }
@@ -10,10 +10,10 @@ module.exports = {
   exits: {},
   fn: async function (inputs) {
     const ActionService = require('../../services/ActionService');
-    const PedidoService = require('../../services/PedidoService');
+    const CartService = require('../../services/CartService');
 
     return await ActionService.handleResponse(this.res, async () => {
-      return await PedidoService.generarPedidoDesdeCarrito(inputs.clienteId);
+      return await CartService.obtenerCarrito({ carritoId: inputs.carritoId });
     });
   }
 };
