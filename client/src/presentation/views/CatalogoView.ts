@@ -17,12 +17,12 @@ export class CatalogoView {
         return `
           <article class="product-card${selectedClass}" aria-label="${escapeHtml(entry.producto.nombre)}">
             <div class="product-card__media">
-              <img
-                class="product-card__image"
-                src="${entry.imagenUrl}"
-                alt="${escapeHtml(entry.imagenAlt)}"
-                width="440"
-                height="320"
+                <img
+                  class="product-card__image"
+                  src="${entry.producto.imagenUrl || entry.imagenUrl}"
+                  alt="${escapeHtml(entry.imagenAlt)}"
+                  width="440"
+                  height="320"
                 loading="lazy"
               />
               <span class="product-card__badge">${escapeHtml(entry.etiqueta)}</span>

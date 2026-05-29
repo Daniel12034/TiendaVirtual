@@ -1,13 +1,14 @@
 import { generarUUID, validarDecimalNoNegativo, validarEnteroNoNegativo, validarEnteroPositivo } from "../utils/domainUtils.js";
 import { VarianteProducto } from "./VarianteProducto.js";
 export class Producto {
-    constructor(nombre, descripcion, precio, estado = true, stock = 0, variantes = [], id = generarUUID()) {
+    constructor(nombre, descripcion, precio, estado = true, stock = 0, variantes = [], id = generarUUID(), imagenUrl = "") {
         validarDecimalNoNegativo(precio, "El precio");
         validarEnteroNoNegativo(stock, "El stock del producto");
         this.id = id;
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.precio = precio;
+        this.imagenUrl = imagenUrl;
         this.estado = estado;
         this.stock = stock;
         this.variantes = [...variantes];
@@ -57,11 +58,12 @@ export class Producto {
             precio: this.precio,
             estado: this.estado,
             stock: this.stock,
+            imagenUrl: this.imagenUrl,
             variantes: this.variantes.map((variante) => variante.toSnapshot())
         };
     }
     static fromSnapshot(snapshot) {
         const variantes = snapshot.variantes.map((variante) => VarianteProducto.fromSnapshot(variante));
-        return new Producto(snapshot.nombre, snapshot.descripcion, snapshot.precio, snapshot.estado, snapshot.stock, variantes, snapshot.id);
+        return new Producto(snapshot.nombre, snapshot.descripcion, snapshot.precio, snapshot.estado, snapshot.stock, variantes, snapshot.id, snapshot.imagenUrl ?? "");
     }
 }

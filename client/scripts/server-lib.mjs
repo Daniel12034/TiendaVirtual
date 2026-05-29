@@ -1,6 +1,8 @@
 import http from "node:http";
+import https from "node:https";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { URL } from "node:url";
 
 const MIME_TYPES = {
   ".css": "text/css; charset=utf-8",
@@ -42,6 +44,46 @@ async function resolveRequestPath(rootDir, requestPath) {
   }
 }
 
+function getApiProxyTarget() {
+  return process.env.API_PROXY_TARGET || "http://127.0.0.1:1337";
+}
+
+function proxyApiRequest(request, response) {
+  const targetBase = new URL(getApiProxyTarget());
+  const requestUrl = new URL(request.url || "/", targetBase);
+  const proxyTransport = requestUrl.protocol === "https:" ? https : http;
+  const headers = { ...request.headers };
+
+  delete headers.host;
+  delete headers.connection;
+
+  const proxyRequest = proxyTransport.request(
+    requestUrl,
+    {
+      method: request.method,
+      headers
+    },
+    (proxyResponse) => {
+      response.writeHead(proxyResponse.statusCode || 502, {
+        ...proxyResponse.headers
+      });
+      proxyResponse.pipe(response);
+    }
+  );
+
+  proxyRequest.on("error", (error) => {
+    console.error("[server] Error proxying API request:", error);
+    if (!response.headersSent) {
+      response.writeHead(502, {
+        "Content-Type": "text/plain; charset=utf-8"
+      });
+    }
+    response.end("Bad Gateway");
+  });
+
+  request.pipe(proxyRequest);
+}
+
 export function startStaticServer({
   rootDir,
   host = "127.0.0.1",
@@ -49,6 +91,13 @@ export function startStaticServer({
   logPrefix = "[server]"
 }) {
   const server = http.createServer(async (request, response) => {
+    const requestPath = request.url || "/";
+
+    if (requestPath.startsWith("/api/")) {
+      proxyApiRequest(request, response);
+      return;
+    }
+
     const filePath = await resolveRequestPath(rootDir, request.url || "/");
 
     if (!filePath) {

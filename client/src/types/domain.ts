@@ -17,6 +17,7 @@ export interface ProductoSnapshot {
   precio: Decimal;
   estado: boolean;
   stock: Integer;
+  imagenUrl: string;
   variantes: VarianteProductoSnapshot[];
 }
 

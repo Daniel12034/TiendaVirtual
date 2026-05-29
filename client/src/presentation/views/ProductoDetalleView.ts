@@ -53,7 +53,7 @@ export class ProductoDetalleView {
         <div class="detail__media">
           <img
             class="detail__image"
-            src="${state.entry.imagenUrl}"
+            src="${state.entry.producto.imagenUrl || state.entry.imagenUrl}"
             alt="${escapeHtml(state.entry.imagenAlt)}"
             width="720"
             height="520"

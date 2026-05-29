@@ -44,7 +44,7 @@ export class ProductPageView {
           <div class="product-page__gallery">
             <div class="product-page__image-frame">
               <img
-                src="${entry.imagenUrl}"
+                src="${entry.producto.imagenUrl || entry.imagenUrl}"
                 alt="${escapeHtml(entry.imagenAlt)}"
                 width="${entry.imagenMeta.width}"
                 height="${entry.imagenMeta.height}"

@@ -4,13 +4,8 @@ import { Cliente } from "./models/Cliente.js";
 import { Pedido } from "./models/Pedido.js";
 import { Producto } from "./models/Producto.js";
 import { VarianteProducto } from "./models/VarianteProducto.js";
-import { crearCatalogoDemo } from "./data/catalogoSeed.js";
-import {
-  PasswordRecoveryRequestSnapshot
-} from "./types/domain.js";
-import { agregarMinutos, generarUUID } from "./utils/domainUtils.js";
-import { FrontendDataService } from "./services/FrontendDataService.js";
-import { StorageService } from "./services/StorageService.js";
+import { BackendApiService } from "./services/BackendApiService.js";
+import { RuntimeStateService } from "./services/RuntimeStateService.js";
 import {
   AppRoute,
   AuthMode,
@@ -45,10 +40,10 @@ import { ProductPageView } from "./presentation/views/ProductPageView.js";
 import { SessionModalView } from "./presentation/views/SessionModalView.js";
 
 export class AppOrchestrator {
-  private readonly catalogo: CatalogoEntry[];
-  private readonly categorias: Categoria[];
-  private readonly storageService: StorageService;
-  private readonly frontendDataService: FrontendDataService;
+  private catalogo: CatalogoEntry[] = [];
+  private categorias: Categoria[] = [];
+  private readonly runtimeState = new RuntimeStateService();
+  private readonly backend = new BackendApiService(this.runtimeState);
   private readonly navbarView: NavbarView;
   private readonly catalogPageView: CatalogPageView;
   private readonly productPageView: ProductPageView;
@@ -57,10 +52,9 @@ export class AppOrchestrator {
   private readonly cartDrawerView: CartDrawerView;
   private readonly notificationView: NotificationView;
   private readonly sessionModalView: SessionModalView;
-  private readonly usuariosRegistrados = new Map<string, Cliente>();
   private readonly productosPorPagina = 10;
 
-  private carrito: Carrito;
+  private carrito: Carrito = new Carrito();
   private usuarioActual: Cliente | null = null;
   private route: AppRoute = { name: "catalogo" };
   private searchQuery = "";
@@ -71,20 +65,16 @@ export class AppOrchestrator {
   private navbarScrolled = false;
   private sessionModalOpen = false;
   private sessionMonitorId: number | null = null;
-  private recoveryRequests: PasswordRecoveryRequestSnapshot[] = [];
+  private recoveryInbox: RecoveryInboxItem[] = [];
+  private passwordResetPageState: PasswordResetPageState = {
+    email: null,
+    expiresAt: null,
+    status: "missing"
+  };
+  private sessionExpiresAt: Date | null = null;
   private readonly selectedVariantByProductId = new Map<string, string | null>();
 
   constructor(private readonly documentRef: Document) {
-    const { catalogo, categorias } = crearCatalogoDemo();
-
-    this.catalogo = catalogo;
-    this.categorias = categorias;
-    this.storageService = new StorageService();
-    this.frontendDataService = new FrontendDataService();
-    this.carrito =
-      this.storageService.loadCart(this.catalogo.map((entry) => entry.producto)) ??
-      new Carrito();
-
     this.navbarView = new NavbarView(
       this.getRequiredElement("navbar-root"),
       this.documentRef
@@ -106,14 +96,16 @@ export class AppOrchestrator {
     );
   }
 
-  public initialize(): void {
-    this.loadPersistedUsers();
-    this.ensureDemoUser();
-    this.restoreCurrentUser();
-    this.recoveryRequests = this.frontendDataService.loadRecoveryRequests();
+  public async initialize(): Promise<void> {
+    await this.backend.bootstrap();
+    this.catalogo = this.backend.getCatalogo();
+    this.categorias = this.backend.getCategorias();
+    this.bindEvents();
     this.ensureInitialRoute();
     this.route = this.resolveRoute();
-    this.bindEvents();
+    await this.restoreSessionState();
+    await this.syncCartFromBackend();
+    await this.preparePasswordResetState();
     this.startSessionMonitor();
     this.renderAll();
     this.handleScroll();
@@ -129,7 +121,7 @@ export class AppOrchestrator {
     window.addEventListener("resize", this.handleResize);
   }
 
-  private readonly handleClick = (event: MouseEvent): void => {
+  private readonly handleClick = async (event: MouseEvent): Promise<void> => {
     const target = event.target;
 
     if (!(target instanceof HTMLElement)) {
@@ -142,7 +134,7 @@ export class AppOrchestrator {
       return;
     }
 
-    if (!this.touchSessionFromInteraction()) {
+    if (!(await this.touchSessionFromInteraction())) {
       return;
     }
 
@@ -190,30 +182,30 @@ export class AppOrchestrator {
           this.renderCartDrawer();
           break;
         case "remove-cart-item":
-          this.removeCartItem(
+          await this.removeCartItem(
             actionElement.dataset.productId,
             actionElement.dataset.variantId || undefined
           );
           break;
         case "decrease-cart-item":
-          this.changeCartItemQuantity(
+          await this.changeCartItemQuantity(
             actionElement.dataset.productId,
             actionElement.dataset.variantId || undefined,
             -1
           );
           break;
         case "increase-cart-item":
-          this.changeCartItemQuantity(
+          await this.changeCartItemQuantity(
             actionElement.dataset.productId,
             actionElement.dataset.variantId || undefined,
             1
           );
           break;
         case "checkout":
-          this.checkout();
+          await this.checkout();
           break;
         case "logout":
-          this.logout();
+          await this.logout();
           break;
         case "close-session-modal":
           this.sessionModalOpen = false;
@@ -233,7 +225,7 @@ export class AppOrchestrator {
     }
   };
 
-  private readonly handleSubmit = (event: SubmitEvent): void => {
+  private readonly handleSubmit = async (event: SubmitEvent): Promise<void> => {
     const target = event.target;
 
     if (!(target instanceof HTMLFormElement)) {
@@ -242,7 +234,7 @@ export class AppOrchestrator {
 
     event.preventDefault();
 
-    if (!this.touchSessionFromInteraction()) {
+    if (!(await this.touchSessionFromInteraction())) {
       return;
     }
 
@@ -252,19 +244,19 @@ export class AppOrchestrator {
           this.submitSearch(target);
           break;
         case "add-to-cart":
-          this.addToCart(target);
+          await this.addToCart(target);
           break;
         case "login":
-          this.login(target);
+          await this.login(target);
           break;
         case "register":
-          this.register(target);
+          await this.register(target);
           break;
         case "request-password-reset":
-          this.requestPasswordReset(target);
+          await this.requestPasswordReset(target);
           break;
         case "reset-password":
-          this.resetPassword(target);
+          await this.resetPassword(target);
           break;
         default:
           break;
@@ -285,10 +277,6 @@ export class AppOrchestrator {
       return;
     }
 
-    if (!this.touchSessionFromInteraction()) {
-      return;
-    }
-
     this.searchQuery = target.value.trim();
     this.currentPage = 1;
 
@@ -297,10 +285,11 @@ export class AppOrchestrator {
     }
   };
 
-  private readonly handleRouteChange = (): void => {
+  private readonly handleRouteChange = async (): Promise<void> => {
     this.closeCartDrawer();
     this.route = this.resolveRoute();
     this.ensureRouteIsValid();
+    await this.preparePasswordResetState();
     this.renderAll();
   };
 
@@ -318,6 +307,71 @@ export class AppOrchestrator {
   private readonly handleResize = (): void => {
     this.syncNavbarPresentation();
   };
+
+  private async restoreSessionState(): Promise<void> {
+    const savedAuth = this.runtimeState.loadAuthState();
+
+    if (!savedAuth) {
+      this.usuarioActual = null;
+      this.sessionExpiresAt = null;
+      this.recoveryInbox = [];
+      return;
+    }
+
+    try {
+      const session = await this.backend.loadSession(savedAuth.sessionId);
+
+      if (!session.esValida()) {
+        this.runtimeState.saveAuthState(null);
+        this.usuarioActual = null;
+        this.sessionExpiresAt = null;
+        this.recoveryInbox = [];
+        return;
+      }
+
+      this.sessionExpiresAt = session.fechaExpiracion;
+      this.usuarioActual = await this.backend.getCurrentAuthUser();
+
+      if (this.usuarioActual) {
+        this.recoveryInbox = await this.backend.loadRecoveryInbox(
+          this.usuarioActual.email
+        );
+      }
+    } catch {
+      this.runtimeState.saveAuthState(null);
+      this.usuarioActual = null;
+      this.sessionExpiresAt = null;
+      this.recoveryInbox = [];
+    }
+  }
+
+  private async syncCartFromBackend(): Promise<void> {
+    this.carrito = await this.backend.ensureCartForCurrentMode(this.usuarioActual);
+    this.emitCartChanged();
+  }
+
+  private async preparePasswordResetState(): Promise<void> {
+    if (this.route.name !== "reset" || !this.route.token) {
+      this.passwordResetPageState = {
+        email: null,
+        expiresAt: null,
+        status: "missing"
+      };
+      return;
+    }
+
+    try {
+      this.passwordResetPageState = await this.backend.getRecoveryByToken(
+        this.route.token
+      );
+    } catch {
+      this.passwordResetPageState = {
+        email: null,
+        expiresAt: null,
+        status: "missing"
+      };
+    }
+  }
 
   private renderAll(): void {
     this.renderNavbar();
@@ -438,15 +492,14 @@ export class AppOrchestrator {
       mode: this.authMode,
       usuarioActual: this.usuarioActual,
       historial: this.usuarioActual?.verHistorial() ?? [],
-      recoveryInbox: this.getRecoveryInboxItems()
+      recoveryInbox: this.recoveryInbox
     };
 
     this.authPageView.render(state);
   }
 
   private renderPasswordResetPage(): void {
-    const state = this.getPasswordResetPageState();
-    this.passwordResetPageView.render(state);
+    this.passwordResetPageView.render(this.passwordResetPageState);
   }
 
   private renderCartDrawer(): void {
@@ -496,7 +549,7 @@ export class AppOrchestrator {
     this.renderAll();
   }
 
-  private addToCart(form: HTMLFormElement): void {
+  private async addToCart(form: HTMLFormElement): Promise<void> {
     const entry = this.getCurrentProductEntry();
 
     if (!entry) {
@@ -517,34 +570,51 @@ export class AppOrchestrator {
       throw new Error("Selecciona una opcion disponible antes de agregar.");
     }
 
-    this.carrito.agregarProducto(entry.producto, cantidad, variante);
-    this.persistCart();
+    this.carrito = await this.backend.addToCart({
+      usuarioActual: this.usuarioActual,
+      productoId: entry.producto.id,
+      varianteId: variante?.id ?? null,
+      cantidad
+    });
+
     if (this.cartDrawerOpen) {
       this.renderCartDrawer();
     }
+
     this.renderProductPage();
+    this.emitCartChanged();
     this.notificationView.show(
       "Producto agregado al carrito. Puedes revisarlo desde el boton del carrito.",
       "success"
     );
   }
 
-  private removeCartItem(productId?: string, variantId?: string): void {
+  private async removeCartItem(productId?: string, variantId?: string): Promise<void> {
     if (!productId) {
       throw new Error("No se pudo identificar el producto a eliminar.");
     }
 
-    this.carrito.eliminarProducto(productId, variantId || undefined);
-    this.persistCart();
+    const item = this.carrito.obtenerItem(productId, variantId || undefined);
+
+    if (!item) {
+      throw new Error("No se encontro el item del carrito.");
+    }
+
+    this.carrito = await this.backend.removeCartItem({
+      usuarioActual: this.usuarioActual,
+      itemId: item.id
+    });
+
     this.renderCartDrawer();
+    this.emitCartChanged();
     this.notificationView.show("Producto eliminado del carrito.", "info");
   }
 
-  private changeCartItemQuantity(
+  private async changeCartItemQuantity(
     productId?: string,
     variantId?: string,
     delta: number = 0
-  ): void {
+  ): Promise<void> {
     if (!productId || !Number.isInteger(delta) || delta === 0) {
       return;
     }
@@ -558,16 +628,21 @@ export class AppOrchestrator {
     const nuevaCantidad = item.cantidad + delta;
 
     if (nuevaCantidad <= 0) {
-      this.removeCartItem(productId, variantId);
+      await this.removeCartItem(productId, variantId);
       return;
     }
 
-    this.carrito.actualizarCantidad(productId, nuevaCantidad, variantId || undefined);
-    this.persistCart();
+    this.carrito = await this.backend.updateCartItemQuantity({
+      usuarioActual: this.usuarioActual,
+      itemId: item.id,
+      cantidad: nuevaCantidad
+    });
+
     this.renderCartDrawer();
+    this.emitCartChanged();
   }
 
-  private checkout(): void {
+  private async checkout(): Promise<void> {
     if (this.carrito.obtenerItems().length === 0) {
       this.notificationView.show("Tu carrito aun esta vacio.", "info");
       return;
@@ -585,20 +660,15 @@ export class AppOrchestrator {
       return;
     }
 
-    if (!this.ensureSessionIsAlive()) {
-      return;
-    }
-
-    const pedido = new Pedido().generarOrden(this.carrito);
+    const pedido = await this.backend.checkout(this.usuarioActual);
     this.usuarioActual.registrarPedido(pedido);
+    this.carrito = await this.backend.ensureCartForCurrentMode(this.usuarioActual);
     this.cartDrawerOpen = false;
-    this.storageService.clearCart();
-    this.persistAuthState();
     this.renderAll();
     this.notificationView.show("Compra realizada con exito.", "success");
   }
 
-  private login(form: HTMLFormElement): void {
+  private async login(form: HTMLFormElement): Promise<void> {
     const data = new FormData(form);
     const credentials: LoginInput = {
       email: String(data.get("email") ?? "").trim().toLowerCase(),
@@ -607,28 +677,23 @@ export class AppOrchestrator {
 
     this.validateLoginInput(credentials);
 
-    const usuario = this.usuariosRegistrados.get(credentials.email);
+    this.usuarioActual = await this.backend.login(
+      credentials.email,
+      credentials.password
+    );
 
-    if (!usuario) {
-      throw new Error("Credenciales invalidas.");
-    }
-
-    try {
-      usuario.login(credentials.password);
-    } catch {
-      throw new Error("Credenciales invalidas.");
-    }
-
-    this.usuarioActual = usuario;
+    this.sessionExpiresAt = this.usuarioActual.obtenerSesionActiva()?.fechaExpiracion ?? null;
+    await this.backend.mergeGuestCartIntoClient(this.usuarioActual.id);
+    await this.syncCartFromBackend();
+    this.recoveryInbox = await this.backend.loadRecoveryInbox(this.usuarioActual.email);
     this.sessionModalOpen = false;
-    this.persistAuthState();
-    this.renderNavbar();
+    this.persistAuthPresentation();
     form.reset();
-    this.notificationView.show(`Hola de nuevo, ${usuario.nombre}.`, "success");
+    this.notificationView.show(`Hola de nuevo, ${this.usuarioActual.nombre}.`, "success");
     this.navigateTo("catalogo");
   }
 
-  private register(form: HTMLFormElement): void {
+  private async register(form: HTMLFormElement): Promise<void> {
     const data = new FormData(form);
     const payload: RegistroInput = {
       nombre: String(data.get("nombre") ?? "").trim(),
@@ -639,65 +704,45 @@ export class AppOrchestrator {
 
     this.validateRegisterInput(payload);
 
-    if (this.usuariosRegistrados.has(payload.email)) {
-      throw new Error("Ya existe una cuenta con ese email.");
-    }
+    this.usuarioActual = await this.backend.register({
+      nombre: payload.nombre,
+      email: payload.email,
+      password: payload.password,
+      fechaNacimiento: payload.fechaNacimiento
+    });
 
-    const usuario = new Cliente(
-      payload.nombre,
-      payload.email,
-      payload.password,
-      new Date(`${payload.fechaNacimiento}T00:00:00`)
-    );
-
-    usuario.registrar();
-    usuario.login(payload.password);
-
-    this.usuariosRegistrados.set(usuario.email.toLowerCase(), usuario);
-    this.usuarioActual = usuario;
+    this.sessionExpiresAt = this.usuarioActual.obtenerSesionActiva()?.fechaExpiracion ?? null;
+    await this.backend.mergeGuestCartIntoClient(this.usuarioActual.id);
+    await this.syncCartFromBackend();
+    this.recoveryInbox = await this.backend.loadRecoveryInbox(this.usuarioActual.email);
     this.sessionModalOpen = false;
-    this.persistAuthState();
+    this.persistAuthPresentation();
     form.reset();
     this.notificationView.show("Tu cuenta fue creada correctamente.", "success");
     this.navigateTo("catalogo");
   }
 
-  private requestPasswordReset(form: HTMLFormElement): void {
+  private async requestPasswordReset(form: HTMLFormElement): Promise<void> {
     const data = new FormData(form);
     const payload: PasswordRecoveryInput = {
       email: String(data.get("email") ?? "").trim().toLowerCase()
     };
 
     this.validatePasswordRecoveryInput(payload);
-
-    const usuario = this.usuariosRegistrados.get(payload.email);
-
-    if (usuario) {
-      const now = new Date();
-      this.recoveryRequests.unshift({
-        id: generarUUID(),
-        email: payload.email,
-        token: generarUUID(),
-        createdAt: now.toISOString(),
-        expiresAt: agregarMinutos(now, 30).toISOString(),
-        consumedAt: null
-      });
-      this.persistRecoveryRequests();
-    }
-
+    this.recoveryInbox = await this.backend.requestPasswordRecovery(payload);
     form.reset();
     this.authMode = "recover";
     this.renderCurrentPage();
     this.notificationView.show(
-      "Si el correo existe, enviamos un enlace de recuperacion. En esta version frontend lo dejaremos disponible en la bandeja local.",
+      "Si el correo existe, enviamos un enlace de recuperacion. Ahora esa bandeja ya viene desde la base de datos.",
       "info"
     );
   }
 
-  private resetPassword(form: HTMLFormElement): void {
+  private async resetPassword(form: HTMLFormElement): Promise<void> {
     const request = this.getRouteRecoveryRequest();
 
-    if (!request || this.getRecoveryRequestStatus(request) !== "pending") {
+    if (!request || this.passwordResetPageState.status !== "valid") {
       throw new Error("El enlace de recuperacion ya no es valido.");
     }
 
@@ -708,24 +753,10 @@ export class AppOrchestrator {
     };
 
     this.validatePasswordResetInput(payload);
-
-    const usuario = this.usuariosRegistrados.get(request.email.toLowerCase());
-
-    if (!usuario) {
-      throw new Error("No encontramos una cuenta activa para ese enlace.");
-    }
-
-    usuario.cambiarContrasena(payload.password);
-    request.consumedAt = new Date().toISOString();
-
-    if (this.usuarioActual?.email.toLowerCase() === usuario.email.toLowerCase()) {
-      this.usuarioActual = null;
-    }
-
-    this.persistAuthState();
-    this.persistRecoveryRequests();
+    await this.backend.resetPassword(request.token, payload);
     form.reset();
     this.authMode = "login";
+    await this.preparePasswordResetState();
     this.notificationView.show(
       "Tu contrasena fue actualizada. Ya puedes iniciar sesion.",
       "success"
@@ -733,15 +764,18 @@ export class AppOrchestrator {
     this.navigateTo("login");
   }
 
-  private logout(): void {
+  private async logout(): Promise<void> {
     if (!this.usuarioActual) {
       return;
     }
 
-    this.usuarioActual.logout();
+    await this.backend.logout().catch(() => undefined);
+    this.runtimeState.saveAuthState(null);
     this.usuarioActual = null;
+    this.sessionExpiresAt = null;
     this.sessionModalOpen = false;
-    this.persistAuthState();
+    this.recoveryInbox = [];
+    await this.syncCartFromBackend();
     this.renderAll();
     this.notificationView.show("Sesion cerrada.", "info");
   }
@@ -839,7 +873,7 @@ export class AppOrchestrator {
     this.closeCartDrawer();
 
     if (window.location.hash === nextHash) {
-      this.handleRouteChange();
+      void this.handleRouteChange();
       return;
     }
 
@@ -983,36 +1017,33 @@ export class AppOrchestrator {
     }
   }
 
-  private touchSessionFromInteraction(): boolean {
-    if (!this.usuarioActual) {
+  private async touchSessionFromInteraction(): Promise<boolean> {
+    if (!this.usuarioActual || !this.sessionExpiresAt) {
       return true;
     }
 
-    const sesion = this.usuarioActual.obtenerSesionActiva();
-
-    if (!sesion) {
-      this.expireSessionState();
+    if (Date.now() > this.sessionExpiresAt.getTime()) {
+      await this.expireSessionState();
       return false;
     }
 
-    this.usuarioActual.registrarActividad();
-    this.persistAuthState();
     return true;
   }
 
-  private ensureSessionIsAlive(): boolean {
+  private async expireSessionState(): Promise<void> {
     if (!this.usuarioActual) {
-      return false;
+      return;
     }
 
-    const sesion = this.usuarioActual.obtenerSesionActiva();
-
-    if (!sesion) {
-      this.expireSessionState();
-      return false;
-    }
-
-    return true;
+    await this.backend.logout().catch(() => undefined);
+    this.runtimeState.saveAuthState(null);
+    this.usuarioActual = null;
+    this.sessionExpiresAt = null;
+    this.cartDrawerOpen = false;
+    this.sessionModalOpen = true;
+    this.recoveryInbox = [];
+    await this.syncCartFromBackend();
+    this.renderAll();
   }
 
   private startSessionMonitor(): void {
@@ -1021,52 +1052,19 @@ export class AppOrchestrator {
     }
 
     this.sessionMonitorId = window.setInterval(() => {
-      if (!this.usuarioActual) {
+      if (!this.usuarioActual || !this.sessionExpiresAt) {
         return;
       }
 
-      if (!this.usuarioActual.obtenerSesionActiva()) {
-        this.expireSessionState();
+      if (Date.now() > this.sessionExpiresAt.getTime()) {
+        void this.expireSessionState();
       }
     }, 20_000);
   }
 
-  private expireSessionState(): void {
-    if (!this.usuarioActual) {
-      return;
-    }
-
-    this.usuarioActual.logout();
-    this.usuarioActual = null;
-    this.cartDrawerOpen = false;
-    this.sessionModalOpen = true;
-    this.persistAuthState();
-    this.renderAll();
-  }
-
-  private persistCart(): void {
-    if (this.carrito.obtenerItems().length === 0) {
-      this.storageService.clearCart();
-    } else {
-      this.storageService.saveCart(this.carrito);
-    }
-
-    this.emitCartChanged();
-  }
-
-  private persistUsers(): void {
-    this.frontendDataService.saveUsers(this.usuariosRegistrados.values());
-  }
-
-  private persistAuthState(): void {
-    this.persistUsers();
-    this.frontendDataService.saveCurrentUserEmail(
-      this.usuarioActual?.email.toLowerCase() ?? null
-    );
-  }
-
-  private persistRecoveryRequests(): void {
-    this.frontendDataService.saveRecoveryRequests(this.recoveryRequests);
+  private persistAuthPresentation(): void {
+    this.sessionModalOpen = false;
+    this.renderNavbar();
   }
 
   private emitCartChanged(): void {
@@ -1094,120 +1092,19 @@ export class AppOrchestrator {
     }));
   }
 
-  private getRecoveryInboxItems(): RecoveryInboxItem[] {
-    return this.recoveryRequests
-      .slice()
-      .sort(
-        (left, right) =>
-          new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
-      )
-      .slice(0, 6)
-      .map((request) => ({
-        id: request.id,
-        email: request.email,
-        expiresAt: new Date(request.expiresAt),
-        resetPath: `#/reset/${request.token}`,
-        status: this.getRecoveryRequestStatus(request)
-      }));
-  }
-
-  private getPasswordResetPageState(): PasswordResetPageState {
-    const request = this.getRouteRecoveryRequest();
-
-    if (!request) {
-      return {
-        email: null,
-        expiresAt: null,
-        status: "missing"
-      };
-    }
-
-    const requestStatus = this.getRecoveryRequestStatus(request);
-
-    return {
-      email: request.email,
-      expiresAt: new Date(request.expiresAt),
-      status: requestStatus === "pending" ? "valid" : requestStatus
-    };
-  }
-
   private getRouteRecoveryRequest():
-    | PasswordRecoveryRequestSnapshot
+    | { token: string; email: string | null; expiresAt: Date | null; status: string }
     | null {
     if (this.route.name !== "reset" || !this.route.token) {
       return null;
     }
 
-    return (
-      this.recoveryRequests.find((request) => request.token === this.route.token) ??
-      null
-    );
-  }
-
-  private getRecoveryRequestStatus(
-    request: PasswordRecoveryRequestSnapshot
-  ): "pending" | "expired" | "used" {
-    if (request.consumedAt) {
-      return "used";
-    }
-
-    if (new Date().getTime() > new Date(request.expiresAt).getTime()) {
-      return "expired";
-    }
-
-    return "pending";
-  }
-
-  private loadPersistedUsers(): void {
-    this.usuariosRegistrados.clear();
-
-    for (const usuario of this.frontendDataService.loadUsers()) {
-      this.usuariosRegistrados.set(usuario.email.toLowerCase(), usuario);
-    }
-  }
-
-  private restoreCurrentUser(): void {
-    const savedEmail = this.frontendDataService
-      .loadCurrentUserEmail()
-      ?.trim()
-      .toLowerCase();
-
-    if (!savedEmail) {
-      return;
-    }
-
-    const usuario = this.usuariosRegistrados.get(savedEmail);
-
-    if (!usuario) {
-      this.frontendDataService.saveCurrentUserEmail(null);
-      return;
-    }
-
-    if (!usuario.obtenerSesionActiva()) {
-      usuario.logout();
-      this.frontendDataService.saveCurrentUserEmail(null);
-      this.persistUsers();
-      return;
-    }
-
-    this.usuarioActual = usuario;
-  }
-
-  private ensureDemoUser(): void {
-    if (this.usuariosRegistrados.has("demo@tiendaonline.com")) {
-      return;
-    }
-
-    const demoUser = new Cliente(
-      "Camila Torres",
-      "demo@tiendaonline.com",
-      "compras123",
-      new Date("1996-07-02T00:00:00")
-    );
-
-    demoUser.registrar();
-    this.usuariosRegistrados.set(demoUser.email.toLowerCase(), demoUser);
-    this.persistUsers();
+    return {
+      token: this.route.token,
+      email: this.passwordResetPageState.email,
+      expiresAt: this.passwordResetPageState.expiresAt,
+      status: this.passwordResetPageState.status
+    };
   }
 
   private isValidEmail(email: string): boolean {

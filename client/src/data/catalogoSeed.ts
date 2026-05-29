@@ -57,7 +57,8 @@ function crearProducto(seed: ProductoSeed): Producto {
     true,
     seed.stock,
     variantes,
-    seed.id
+    seed.id,
+    seed.imagen.url
   );
 }
 
@@ -1016,7 +1017,7 @@ export function crearCatalogoDemo(): {
 
     productosCategoria.push(producto);
     catalogoMetadata.set(producto.id, {
-      imagenUrl: productoSeed.imagen.url,
+      imagenUrl: producto.imagenUrl,
       imagenAlt: productoSeed.imagen.alt,
       etiqueta: productoSeed.etiqueta,
       imagenMeta: crearImagenMeta(productoSeed.imagen)

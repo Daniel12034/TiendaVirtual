@@ -171,9 +171,8 @@ export class AuthPageView {
               Ingresa tu correo ya registrado.
             </p>
             <p class="auth-page__support">
-              (Como esta solucion corre solo en
-              frontend, los enlaces enviados quedan visibles en la bandeja local
-              de esta misma pantalla.)
+              Los enlaces se generan y consultan desde el backend, asi que esta
+              bandeja muestra solo lo que realmente existe en la base de datos.
             </p>
             <br>
             <form data-form="request-password-reset" novalidate>
@@ -194,7 +193,7 @@ export class AuthPageView {
               <article class="auth-card auth-card--single">
                 <div class="section-panel__header">
                   <div>
-                    <span class="eyebrow">Bandeja local</span>
+                    <span class="eyebrow">Bandeja backend</span>
                     <h2>Enlaces enviados</h2>
                   </div>
                 </div>

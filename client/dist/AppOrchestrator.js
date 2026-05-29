@@ -1,10 +1,6 @@
 import { Carrito } from "./models/Carrito.js";
-import { Cliente } from "./models/Cliente.js";
-import { Pedido } from "./models/Pedido.js";
-import { crearCatalogoDemo } from "./data/catalogoSeed.js";
-import { agregarMinutos, generarUUID } from "./utils/domainUtils.js";
-import { FrontendDataService } from "./services/FrontendDataService.js";
-import { StorageService } from "./services/StorageService.js";
+import { BackendApiService } from "./services/BackendApiService.js";
+import { RuntimeStateService } from "./services/RuntimeStateService.js";
 import { CART_CHANGED_EVENT } from "./presentation/types.js";
 import { primeraVarianteDisponible, obtenerVariantes, productoTieneStock, resumenStockProducto } from "./presentation/utils/productState.js";
 import { AuthPageView } from "./presentation/views/AuthPageView.js";
@@ -18,8 +14,12 @@ import { SessionModalView } from "./presentation/views/SessionModalView.js";
 export class AppOrchestrator {
     constructor(documentRef) {
         this.documentRef = documentRef;
-        this.usuariosRegistrados = new Map();
+        this.catalogo = [];
+        this.categorias = [];
+        this.runtimeState = new RuntimeStateService();
+        this.backend = new BackendApiService(this.runtimeState);
         this.productosPorPagina = 10;
+        this.carrito = new Carrito();
         this.usuarioActual = null;
         this.route = { name: "catalogo" };
         this.searchQuery = "";
@@ -30,9 +30,15 @@ export class AppOrchestrator {
         this.navbarScrolled = false;
         this.sessionModalOpen = false;
         this.sessionMonitorId = null;
-        this.recoveryRequests = [];
+        this.recoveryInbox = [];
+        this.passwordResetPageState = {
+            email: null,
+            expiresAt: null,
+            status: "missing"
+        };
+        this.sessionExpiresAt = null;
         this.selectedVariantByProductId = new Map();
-        this.handleClick = (event) => {
+        this.handleClick = async (event) => {
             const target = event.target;
             if (!(target instanceof HTMLElement)) {
                 return;
@@ -41,7 +47,7 @@ export class AppOrchestrator {
             if (!actionElement) {
                 return;
             }
-            if (!this.touchSessionFromInteraction()) {
+            if (!(await this.touchSessionFromInteraction())) {
                 return;
             }
             const action = actionElement.dataset.action;
@@ -87,19 +93,19 @@ export class AppOrchestrator {
                         this.renderCartDrawer();
                         break;
                     case "remove-cart-item":
-                        this.removeCartItem(actionElement.dataset.productId, actionElement.dataset.variantId || undefined);
+                        await this.removeCartItem(actionElement.dataset.productId, actionElement.dataset.variantId || undefined);
                         break;
                     case "decrease-cart-item":
-                        this.changeCartItemQuantity(actionElement.dataset.productId, actionElement.dataset.variantId || undefined, -1);
+                        await this.changeCartItemQuantity(actionElement.dataset.productId, actionElement.dataset.variantId || undefined, -1);
                         break;
                     case "increase-cart-item":
-                        this.changeCartItemQuantity(actionElement.dataset.productId, actionElement.dataset.variantId || undefined, 1);
+                        await this.changeCartItemQuantity(actionElement.dataset.productId, actionElement.dataset.variantId || undefined, 1);
                         break;
                     case "checkout":
-                        this.checkout();
+                        await this.checkout();
                         break;
                     case "logout":
-                        this.logout();
+                        await this.logout();
                         break;
                     case "close-session-modal":
                         this.sessionModalOpen = false;
@@ -119,13 +125,13 @@ export class AppOrchestrator {
                 this.notifyError(error);
             }
         };
-        this.handleSubmit = (event) => {
+        this.handleSubmit = async (event) => {
             const target = event.target;
             if (!(target instanceof HTMLFormElement)) {
                 return;
             }
             event.preventDefault();
-            if (!this.touchSessionFromInteraction()) {
+            if (!(await this.touchSessionFromInteraction())) {
                 return;
             }
             try {
@@ -134,19 +140,19 @@ export class AppOrchestrator {
                         this.submitSearch(target);
                         break;
                     case "add-to-cart":
-                        this.addToCart(target);
+                        await this.addToCart(target);
                         break;
                     case "login":
-                        this.login(target);
+                        await this.login(target);
                         break;
                     case "register":
-                        this.register(target);
+                        await this.register(target);
                         break;
                     case "request-password-reset":
-                        this.requestPasswordReset(target);
+                        await this.requestPasswordReset(target);
                         break;
                     case "reset-password":
-                        this.resetPassword(target);
+                        await this.resetPassword(target);
                         break;
                     default:
                         break;
@@ -164,19 +170,17 @@ export class AppOrchestrator {
             if (target.name !== "search") {
                 return;
             }
-            if (!this.touchSessionFromInteraction()) {
-                return;
-            }
             this.searchQuery = target.value.trim();
             this.currentPage = 1;
             if (this.route.name === "catalogo") {
                 this.renderCurrentPage();
             }
         };
-        this.handleRouteChange = () => {
+        this.handleRouteChange = async () => {
             this.closeCartDrawer();
             this.route = this.resolveRoute();
             this.ensureRouteIsValid();
+            await this.preparePasswordResetState();
             this.renderAll();
         };
         this.handleScroll = () => {
@@ -190,14 +194,6 @@ export class AppOrchestrator {
         this.handleResize = () => {
             this.syncNavbarPresentation();
         };
-        const { catalogo, categorias } = crearCatalogoDemo();
-        this.catalogo = catalogo;
-        this.categorias = categorias;
-        this.storageService = new StorageService();
-        this.frontendDataService = new FrontendDataService();
-        this.carrito =
-            this.storageService.loadCart(this.catalogo.map((entry) => entry.producto)) ??
-                new Carrito();
         this.navbarView = new NavbarView(this.getRequiredElement("navbar-root"), this.documentRef);
         this.catalogPageView = new CatalogPageView(this.getRequiredElement("app-view"));
         this.productPageView = new ProductPageView(this.getRequiredElement("app-view"));
@@ -207,14 +203,16 @@ export class AppOrchestrator {
         this.notificationView = new NotificationView(this.getRequiredElement("notification-root"));
         this.sessionModalView = new SessionModalView(this.getRequiredElement("modal-root"));
     }
-    initialize() {
-        this.loadPersistedUsers();
-        this.ensureDemoUser();
-        this.restoreCurrentUser();
-        this.recoveryRequests = this.frontendDataService.loadRecoveryRequests();
+    async initialize() {
+        await this.backend.bootstrap();
+        this.catalogo = this.backend.getCatalogo();
+        this.categorias = this.backend.getCategorias();
+        this.bindEvents();
         this.ensureInitialRoute();
         this.route = this.resolveRoute();
-        this.bindEvents();
+        await this.restoreSessionState();
+        await this.syncCartFromBackend();
+        await this.preparePasswordResetState();
         this.startSessionMonitor();
         this.renderAll();
         this.handleScroll();
@@ -227,6 +225,60 @@ export class AppOrchestrator {
         window.addEventListener("hashchange", this.handleRouteChange);
         window.addEventListener("scroll", this.handleScroll, { passive: true });
         window.addEventListener("resize", this.handleResize);
+    }
+    async restoreSessionState() {
+        const savedAuth = this.runtimeState.loadAuthState();
+        if (!savedAuth) {
+            this.usuarioActual = null;
+            this.sessionExpiresAt = null;
+            this.recoveryInbox = [];
+            return;
+        }
+        try {
+            const session = await this.backend.loadSession(savedAuth.sessionId);
+            if (!session.esValida()) {
+                this.runtimeState.saveAuthState(null);
+                this.usuarioActual = null;
+                this.sessionExpiresAt = null;
+                this.recoveryInbox = [];
+                return;
+            }
+            this.sessionExpiresAt = session.fechaExpiracion;
+            this.usuarioActual = await this.backend.getCurrentAuthUser();
+            if (this.usuarioActual) {
+                this.recoveryInbox = await this.backend.loadRecoveryInbox(this.usuarioActual.email);
+            }
+        }
+        catch {
+            this.runtimeState.saveAuthState(null);
+            this.usuarioActual = null;
+            this.sessionExpiresAt = null;
+            this.recoveryInbox = [];
+        }
+    }
+    async syncCartFromBackend() {
+        this.carrito = await this.backend.ensureCartForCurrentMode(this.usuarioActual);
+        this.emitCartChanged();
+    }
+    async preparePasswordResetState() {
+        if (this.route.name !== "reset" || !this.route.token) {
+            this.passwordResetPageState = {
+                email: null,
+                expiresAt: null,
+                status: "missing"
+            };
+            return;
+        }
+        try {
+            this.passwordResetPageState = await this.backend.getRecoveryByToken(this.route.token);
+        }
+        catch {
+            this.passwordResetPageState = {
+                email: null,
+                expiresAt: null,
+                status: "missing"
+            };
+        }
     }
     renderAll() {
         this.renderNavbar();
@@ -324,13 +376,12 @@ export class AppOrchestrator {
             mode: this.authMode,
             usuarioActual: this.usuarioActual,
             historial: this.usuarioActual?.verHistorial() ?? [],
-            recoveryInbox: this.getRecoveryInboxItems()
+            recoveryInbox: this.recoveryInbox
         };
         this.authPageView.render(state);
     }
     renderPasswordResetPage() {
-        const state = this.getPasswordResetPageState();
-        this.passwordResetPageView.render(state);
+        this.passwordResetPageView.render(this.passwordResetPageState);
     }
     renderCartDrawer() {
         this.cartDrawerView.render({
@@ -366,7 +417,7 @@ export class AppOrchestrator {
         }
         this.renderAll();
     }
-    addToCart(form) {
+    async addToCart(form) {
         const entry = this.getCurrentProductEntry();
         if (!entry) {
             throw new Error("Selecciona un producto antes de continuar.");
@@ -381,24 +432,36 @@ export class AppOrchestrator {
         if (variantes.length > 0 && !variante) {
             throw new Error("Selecciona una opcion disponible antes de agregar.");
         }
-        this.carrito.agregarProducto(entry.producto, cantidad, variante);
-        this.persistCart();
+        this.carrito = await this.backend.addToCart({
+            usuarioActual: this.usuarioActual,
+            productoId: entry.producto.id,
+            varianteId: variante?.id ?? null,
+            cantidad
+        });
         if (this.cartDrawerOpen) {
             this.renderCartDrawer();
         }
         this.renderProductPage();
+        this.emitCartChanged();
         this.notificationView.show("Producto agregado al carrito. Puedes revisarlo desde el boton del carrito.", "success");
     }
-    removeCartItem(productId, variantId) {
+    async removeCartItem(productId, variantId) {
         if (!productId) {
             throw new Error("No se pudo identificar el producto a eliminar.");
         }
-        this.carrito.eliminarProducto(productId, variantId || undefined);
-        this.persistCart();
+        const item = this.carrito.obtenerItem(productId, variantId || undefined);
+        if (!item) {
+            throw new Error("No se encontro el item del carrito.");
+        }
+        this.carrito = await this.backend.removeCartItem({
+            usuarioActual: this.usuarioActual,
+            itemId: item.id
+        });
         this.renderCartDrawer();
+        this.emitCartChanged();
         this.notificationView.show("Producto eliminado del carrito.", "info");
     }
-    changeCartItemQuantity(productId, variantId, delta = 0) {
+    async changeCartItemQuantity(productId, variantId, delta = 0) {
         if (!productId || !Number.isInteger(delta) || delta === 0) {
             return;
         }
@@ -408,14 +471,18 @@ export class AppOrchestrator {
         }
         const nuevaCantidad = item.cantidad + delta;
         if (nuevaCantidad <= 0) {
-            this.removeCartItem(productId, variantId);
+            await this.removeCartItem(productId, variantId);
             return;
         }
-        this.carrito.actualizarCantidad(productId, nuevaCantidad, variantId || undefined);
-        this.persistCart();
+        this.carrito = await this.backend.updateCartItemQuantity({
+            usuarioActual: this.usuarioActual,
+            itemId: item.id,
+            cantidad: nuevaCantidad
+        });
         this.renderCartDrawer();
+        this.emitCartChanged();
     }
-    checkout() {
+    async checkout() {
         if (this.carrito.obtenerItems().length === 0) {
             this.notificationView.show("Tu carrito aun esta vacio.", "info");
             return;
@@ -428,43 +495,32 @@ export class AppOrchestrator {
             this.navigateTo("login");
             return;
         }
-        if (!this.ensureSessionIsAlive()) {
-            return;
-        }
-        const pedido = new Pedido().generarOrden(this.carrito);
+        const pedido = await this.backend.checkout(this.usuarioActual);
         this.usuarioActual.registrarPedido(pedido);
+        this.carrito = await this.backend.ensureCartForCurrentMode(this.usuarioActual);
         this.cartDrawerOpen = false;
-        this.storageService.clearCart();
-        this.persistAuthState();
         this.renderAll();
         this.notificationView.show("Compra realizada con exito.", "success");
     }
-    login(form) {
+    async login(form) {
         const data = new FormData(form);
         const credentials = {
             email: String(data.get("email") ?? "").trim().toLowerCase(),
             password: String(data.get("password") ?? "")
         };
         this.validateLoginInput(credentials);
-        const usuario = this.usuariosRegistrados.get(credentials.email);
-        if (!usuario) {
-            throw new Error("Credenciales invalidas.");
-        }
-        try {
-            usuario.login(credentials.password);
-        }
-        catch {
-            throw new Error("Credenciales invalidas.");
-        }
-        this.usuarioActual = usuario;
+        this.usuarioActual = await this.backend.login(credentials.email, credentials.password);
+        this.sessionExpiresAt = this.usuarioActual.obtenerSesionActiva()?.fechaExpiracion ?? null;
+        await this.backend.mergeGuestCartIntoClient(this.usuarioActual.id);
+        await this.syncCartFromBackend();
+        this.recoveryInbox = await this.backend.loadRecoveryInbox(this.usuarioActual.email);
         this.sessionModalOpen = false;
-        this.persistAuthState();
-        this.renderNavbar();
+        this.persistAuthPresentation();
         form.reset();
-        this.notificationView.show(`Hola de nuevo, ${usuario.nombre}.`, "success");
+        this.notificationView.show(`Hola de nuevo, ${this.usuarioActual.nombre}.`, "success");
         this.navigateTo("catalogo");
     }
-    register(form) {
+    async register(form) {
         const data = new FormData(form);
         const payload = {
             nombre: String(data.get("nombre") ?? "").trim(),
@@ -473,47 +529,37 @@ export class AppOrchestrator {
             fechaNacimiento: String(data.get("fechaNacimiento") ?? "")
         };
         this.validateRegisterInput(payload);
-        if (this.usuariosRegistrados.has(payload.email)) {
-            throw new Error("Ya existe una cuenta con ese email.");
-        }
-        const usuario = new Cliente(payload.nombre, payload.email, payload.password, new Date(`${payload.fechaNacimiento}T00:00:00`));
-        usuario.registrar();
-        usuario.login(payload.password);
-        this.usuariosRegistrados.set(usuario.email.toLowerCase(), usuario);
-        this.usuarioActual = usuario;
+        this.usuarioActual = await this.backend.register({
+            nombre: payload.nombre,
+            email: payload.email,
+            password: payload.password,
+            fechaNacimiento: payload.fechaNacimiento
+        });
+        this.sessionExpiresAt = this.usuarioActual.obtenerSesionActiva()?.fechaExpiracion ?? null;
+        await this.backend.mergeGuestCartIntoClient(this.usuarioActual.id);
+        await this.syncCartFromBackend();
+        this.recoveryInbox = await this.backend.loadRecoveryInbox(this.usuarioActual.email);
         this.sessionModalOpen = false;
-        this.persistAuthState();
+        this.persistAuthPresentation();
         form.reset();
         this.notificationView.show("Tu cuenta fue creada correctamente.", "success");
         this.navigateTo("catalogo");
     }
-    requestPasswordReset(form) {
+    async requestPasswordReset(form) {
         const data = new FormData(form);
         const payload = {
             email: String(data.get("email") ?? "").trim().toLowerCase()
         };
         this.validatePasswordRecoveryInput(payload);
-        const usuario = this.usuariosRegistrados.get(payload.email);
-        if (usuario) {
-            const now = new Date();
-            this.recoveryRequests.unshift({
-                id: generarUUID(),
-                email: payload.email,
-                token: generarUUID(),
-                createdAt: now.toISOString(),
-                expiresAt: agregarMinutos(now, 30).toISOString(),
-                consumedAt: null
-            });
-            this.persistRecoveryRequests();
-        }
+        this.recoveryInbox = await this.backend.requestPasswordRecovery(payload);
         form.reset();
         this.authMode = "recover";
         this.renderCurrentPage();
-        this.notificationView.show("Si el correo existe, enviamos un enlace de recuperacion. En esta version frontend lo dejaremos disponible en la bandeja local.", "info");
+        this.notificationView.show("Si el correo existe, enviamos un enlace de recuperacion. Ahora esa bandeja ya viene desde la base de datos.", "info");
     }
-    resetPassword(form) {
+    async resetPassword(form) {
         const request = this.getRouteRecoveryRequest();
-        if (!request || this.getRecoveryRequestStatus(request) !== "pending") {
+        if (!request || this.passwordResetPageState.status !== "valid") {
             throw new Error("El enlace de recuperacion ya no es valido.");
         }
         const data = new FormData(form);
@@ -522,30 +568,24 @@ export class AppOrchestrator {
             confirmPassword: String(data.get("confirmPassword") ?? "")
         };
         this.validatePasswordResetInput(payload);
-        const usuario = this.usuariosRegistrados.get(request.email.toLowerCase());
-        if (!usuario) {
-            throw new Error("No encontramos una cuenta activa para ese enlace.");
-        }
-        usuario.cambiarContrasena(payload.password);
-        request.consumedAt = new Date().toISOString();
-        if (this.usuarioActual?.email.toLowerCase() === usuario.email.toLowerCase()) {
-            this.usuarioActual = null;
-        }
-        this.persistAuthState();
-        this.persistRecoveryRequests();
+        await this.backend.resetPassword(request.token, payload);
         form.reset();
         this.authMode = "login";
+        await this.preparePasswordResetState();
         this.notificationView.show("Tu contrasena fue actualizada. Ya puedes iniciar sesion.", "success");
         this.navigateTo("login");
     }
-    logout() {
+    async logout() {
         if (!this.usuarioActual) {
             return;
         }
-        this.usuarioActual.logout();
+        await this.backend.logout().catch(() => undefined);
+        this.runtimeState.saveAuthState(null);
         this.usuarioActual = null;
+        this.sessionExpiresAt = null;
         this.sessionModalOpen = false;
-        this.persistAuthState();
+        this.recoveryInbox = [];
+        await this.syncCartFromBackend();
         this.renderAll();
         this.notificationView.show("Sesion cerrada.", "info");
     }
@@ -619,7 +659,7 @@ export class AppOrchestrator {
         const nextHash = `#/${path}`;
         this.closeCartDrawer();
         if (window.location.hash === nextHash) {
-            this.handleRouteChange();
+            void this.handleRouteChange();
             return;
         }
         window.location.hash = nextHash;
@@ -728,72 +768,46 @@ export class AppOrchestrator {
             throw new Error("Las contrasenas no coinciden.");
         }
     }
-    touchSessionFromInteraction() {
-        if (!this.usuarioActual) {
+    async touchSessionFromInteraction() {
+        if (!this.usuarioActual || !this.sessionExpiresAt) {
             return true;
         }
-        const sesion = this.usuarioActual.obtenerSesionActiva();
-        if (!sesion) {
-            this.expireSessionState();
+        if (Date.now() > this.sessionExpiresAt.getTime()) {
+            await this.expireSessionState();
             return false;
         }
-        this.usuarioActual.registrarActividad();
-        this.persistAuthState();
         return true;
     }
-    ensureSessionIsAlive() {
+    async expireSessionState() {
         if (!this.usuarioActual) {
-            return false;
+            return;
         }
-        const sesion = this.usuarioActual.obtenerSesionActiva();
-        if (!sesion) {
-            this.expireSessionState();
-            return false;
-        }
-        return true;
+        await this.backend.logout().catch(() => undefined);
+        this.runtimeState.saveAuthState(null);
+        this.usuarioActual = null;
+        this.sessionExpiresAt = null;
+        this.cartDrawerOpen = false;
+        this.sessionModalOpen = true;
+        this.recoveryInbox = [];
+        await this.syncCartFromBackend();
+        this.renderAll();
     }
     startSessionMonitor() {
         if (this.sessionMonitorId !== null) {
             window.clearInterval(this.sessionMonitorId);
         }
         this.sessionMonitorId = window.setInterval(() => {
-            if (!this.usuarioActual) {
+            if (!this.usuarioActual || !this.sessionExpiresAt) {
                 return;
             }
-            if (!this.usuarioActual.obtenerSesionActiva()) {
-                this.expireSessionState();
+            if (Date.now() > this.sessionExpiresAt.getTime()) {
+                void this.expireSessionState();
             }
         }, 20_000);
     }
-    expireSessionState() {
-        if (!this.usuarioActual) {
-            return;
-        }
-        this.usuarioActual.logout();
-        this.usuarioActual = null;
-        this.cartDrawerOpen = false;
-        this.sessionModalOpen = true;
-        this.persistAuthState();
-        this.renderAll();
-    }
-    persistCart() {
-        if (this.carrito.obtenerItems().length === 0) {
-            this.storageService.clearCart();
-        }
-        else {
-            this.storageService.saveCart(this.carrito);
-        }
-        this.emitCartChanged();
-    }
-    persistUsers() {
-        this.frontendDataService.saveUsers(this.usuariosRegistrados.values());
-    }
-    persistAuthState() {
-        this.persistUsers();
-        this.frontendDataService.saveCurrentUserEmail(this.usuarioActual?.email.toLowerCase() ?? null);
-    }
-    persistRecoveryRequests() {
-        this.frontendDataService.saveRecoveryRequests(this.recoveryRequests);
+    persistAuthPresentation() {
+        this.sessionModalOpen = false;
+        this.renderNavbar();
     }
     emitCartChanged() {
         const detail = {
@@ -814,86 +828,16 @@ export class AppOrchestrator {
             cantidadProductos: categoria.obtenerProductos().length
         }));
     }
-    getRecoveryInboxItems() {
-        return this.recoveryRequests
-            .slice()
-            .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
-            .slice(0, 6)
-            .map((request) => ({
-            id: request.id,
-            email: request.email,
-            expiresAt: new Date(request.expiresAt),
-            resetPath: `#/reset/${request.token}`,
-            status: this.getRecoveryRequestStatus(request)
-        }));
-    }
-    getPasswordResetPageState() {
-        const request = this.getRouteRecoveryRequest();
-        if (!request) {
-            return {
-                email: null,
-                expiresAt: null,
-                status: "missing"
-            };
-        }
-        const requestStatus = this.getRecoveryRequestStatus(request);
-        return {
-            email: request.email,
-            expiresAt: new Date(request.expiresAt),
-            status: requestStatus === "pending" ? "valid" : requestStatus
-        };
-    }
     getRouteRecoveryRequest() {
         if (this.route.name !== "reset" || !this.route.token) {
             return null;
         }
-        return (this.recoveryRequests.find((request) => request.token === this.route.token) ??
-            null);
-    }
-    getRecoveryRequestStatus(request) {
-        if (request.consumedAt) {
-            return "used";
-        }
-        if (new Date().getTime() > new Date(request.expiresAt).getTime()) {
-            return "expired";
-        }
-        return "pending";
-    }
-    loadPersistedUsers() {
-        this.usuariosRegistrados.clear();
-        for (const usuario of this.frontendDataService.loadUsers()) {
-            this.usuariosRegistrados.set(usuario.email.toLowerCase(), usuario);
-        }
-    }
-    restoreCurrentUser() {
-        const savedEmail = this.frontendDataService
-            .loadCurrentUserEmail()
-            ?.trim()
-            .toLowerCase();
-        if (!savedEmail) {
-            return;
-        }
-        const usuario = this.usuariosRegistrados.get(savedEmail);
-        if (!usuario) {
-            this.frontendDataService.saveCurrentUserEmail(null);
-            return;
-        }
-        if (!usuario.obtenerSesionActiva()) {
-            usuario.logout();
-            this.frontendDataService.saveCurrentUserEmail(null);
-            this.persistUsers();
-            return;
-        }
-        this.usuarioActual = usuario;
-    }
-    ensureDemoUser() {
-        if (this.usuariosRegistrados.has("demo@tiendaonline.com")) {
-            return;
-        }
-        const demoUser = new Cliente("Camila Torres", "demo@tiendaonline.com", "compras123", new Date("1996-07-02T00:00:00"));
-        demoUser.registrar();
-        this.usuariosRegistrados.set(demoUser.email.toLowerCase(), demoUser);
-        this.persistUsers();
+        return {
+            token: this.route.token,
+            email: this.passwordResetPageState.email,
+            expiresAt: this.passwordResetPageState.expiresAt,
+            status: this.passwordResetPageState.status
+        };
     }
     isValidEmail(email) {
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

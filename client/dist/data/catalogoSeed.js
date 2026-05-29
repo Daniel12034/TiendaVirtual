@@ -6,7 +6,7 @@ function crearVariante(seed) {
 }
 function crearProducto(seed) {
     const variantes = (seed.variantes ?? []).map(crearVariante);
-    return new Producto(seed.nombre, seed.descripcion, seed.precio, true, seed.stock, variantes, seed.id);
+    return new Producto(seed.nombre, seed.descripcion, seed.precio, true, seed.stock, variantes, seed.id, seed.imagen.url);
 }
 function crearImagenMeta(seed) {
     return {
@@ -903,7 +903,7 @@ export function crearCatalogoDemo() {
         }
         productosCategoria.push(producto);
         catalogoMetadata.set(producto.id, {
-            imagenUrl: productoSeed.imagen.url,
+            imagenUrl: producto.imagenUrl,
             imagenAlt: productoSeed.imagen.alt,
             etiqueta: productoSeed.etiqueta,
             imagenMeta: crearImagenMeta(productoSeed.imagen)

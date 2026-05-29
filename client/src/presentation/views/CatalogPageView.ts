@@ -63,7 +63,7 @@ export class CatalogPageView {
                 >
                   <div class="product-card__media">
                     <img
-                      src="${entry.imagenUrl}"
+                      src="${entry.producto.imagenUrl || entry.imagenUrl}"
                       alt="${escapeHtml(entry.imagenAlt)}"
                       loading="lazy"
                       width="${entry.imagenMeta.width}"

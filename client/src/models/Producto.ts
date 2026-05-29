@@ -17,6 +17,7 @@ export class Producto {
   public readonly nombre: string;
   public readonly descripcion: string;
   public readonly precio: Decimal;
+  public readonly imagenUrl: string;
   public estado: boolean;
   private stock: Integer;
   private readonly variantes: VarianteProducto[];
@@ -28,7 +29,8 @@ export class Producto {
     estado: boolean = true,
     stock: Integer = 0,
     variantes: VarianteProducto[] = [],
-    id: UUID = generarUUID()
+    id: UUID = generarUUID(),
+    imagenUrl: string = ""
   ) {
     validarDecimalNoNegativo(precio, "El precio");
     validarEnteroNoNegativo(stock, "El stock del producto");
@@ -37,6 +39,7 @@ export class Producto {
     this.nombre = nombre;
     this.descripcion = descripcion;
     this.precio = precio;
+    this.imagenUrl = imagenUrl;
     this.estado = estado;
     this.stock = stock;
     this.variantes = [...variantes];
@@ -100,6 +103,7 @@ export class Producto {
       precio: this.precio,
       estado: this.estado,
       stock: this.stock,
+      imagenUrl: this.imagenUrl,
       variantes: this.variantes.map((variante) => variante.toSnapshot())
     };
   }
@@ -116,7 +120,8 @@ export class Producto {
       snapshot.estado,
       snapshot.stock,
       variantes,
-      snapshot.id
+      snapshot.id,
+      snapshot.imagenUrl ?? ""
     );
   }
 }
