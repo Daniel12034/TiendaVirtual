@@ -13,6 +13,10 @@
  * https://sailsjs.com/config/datastores
  */
 
+const { loadProjectEnv } = require("./loadEnv");
+
+loadProjectEnv(__dirname, "../.env");
+
 module.exports.datastores = {
 
 
@@ -49,9 +53,20 @@ module.exports.datastores = {
     *                                                                          *
     ***************************************************************************/
     adapter: 'sails-mysql',
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL || buildDatabaseUrl(),
 
   },
 
 
 };
+
+function buildDatabaseUrl() {
+  const client = process.env.DB_CLIENT || "mysql";
+  const user = encodeURIComponent(process.env.DB_USER || "root");
+  const password = encodeURIComponent(process.env.DB_PASS || "");
+  const host = process.env.DB_HOST || "localhost";
+  const port = process.env.DB_PORT || "3306";
+  const database = process.env.DB_NAME || "";
+
+  return `${client}://${user}:${password}@${host}:${port}/${database}`;
+}

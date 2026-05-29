@@ -10,9 +10,11 @@
     "@sailshq/socket.io-redis": "^6.1.2",
     "bcryptjs": "^3.0.3",
     "dayjs": "^1.11.20",
+    "dotenv": "^17.4.2",
     "grunt": "1.0.4",
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.18.1",
+    "nodemon": "^3.1.14",
     "sails": "^1.5.17",
     "sails-hook-grunt": "^5.0.0",
     "sails-hook-orm": "^4.0.3",
@@ -25,10 +27,13 @@
     "eslint": "5.16.0"
   },
   "scripts": {
-    "start": "NODE_ENV=production node app.js",
+    "start": "nodemon app.js",
     "test": "npm run lint && npm run custom-tests && echo 'Done.'",
     "lint": "./node_modules/eslint/bin/eslint.js . --max-warnings=0 --report-unused-disable-directives && echo '✔  Your .js files look good.'",
-    "custom-tests": "echo \"(No other custom tests yet.)\" && echo"
+    "custom-tests": "echo \"(No other custom tests yet.)\" && echo",
+    "db:init": "node db/init.js",
+    "db:migrate": "knex migrate:latest --cwd db",
+    "db:seed": "knex seed:run --cwd db"
   },
   "main": "app.js",
   "repository": {

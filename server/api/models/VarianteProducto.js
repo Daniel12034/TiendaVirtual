@@ -25,7 +25,7 @@ module.exports = {
 
     stock: {
       type: 'number',
-      required: true,
+      required: false,
       min: 0,
       defaultsTo: 0
     },

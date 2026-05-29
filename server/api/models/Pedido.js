@@ -22,7 +22,7 @@ module.exports = {
     total: {
       type: 'number',
       columnType: 'decimal(10,2)',
-      required: true,
+      required: false,
       defaultsTo: 0
     },
 
