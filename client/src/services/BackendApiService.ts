@@ -128,6 +128,12 @@ interface ApiAuthPayload {
   sesion: ApiSesion;
 }
 
+interface ApiRegisterPayload {
+  usuario: ApiUsuario;
+  cliente: ApiCliente;
+  carrito: ApiCarrito;
+}
+
 interface ApiRecoveryRequestPayload {
   email: string;
 }
@@ -156,6 +162,10 @@ export class BackendApiService {
   }) {}
 
   public async bootstrap(): Promise<void> {
+    await this.refreshCatalog();
+  }
+
+  public async refreshCatalog(): Promise<void> {
     await this.loadCatalog();
   }
 
@@ -241,7 +251,7 @@ export class BackendApiService {
     password: string;
     fechaNacimiento: string;
   }): Promise<Cliente> {
-    const response = await this.requestJson<ApiAuthPayload>("/api/auth/register", {
+    await this.requestJson<ApiRegisterPayload>("/api/auth/register", {
       method: "POST",
       json: {
         nombre: payload.nombre,
@@ -251,14 +261,7 @@ export class BackendApiService {
       }
     });
 
-    this.runtimeState.saveAuthState({
-      sessionId: response.sesion.id,
-      token: response.sesion.token,
-      clienteId: response.cliente.id,
-      email: response.usuario.email
-    });
-
-    return this.mapCliente(response.cliente, response.usuario, response.sesion);
+    return await this.login(payload.email, payload.password);
   }
 
   public async logout(): Promise<void> {
@@ -522,8 +525,8 @@ export class BackendApiService {
 
   private async loadCatalog(): Promise<void> {
     const [categorias, productos] = await Promise.all([
-      this.requestJson<ApiCategoria[]>("/api/categorias"),
-      this.requestJson<ApiProducto[]>("/api/productos")
+      this.requestJson<ApiCategoria[]>("/api/categorias", { cache: "no-store" }),
+      this.requestJson<ApiProducto[]>("/api/productos", { cache: "no-store" })
     ]);
 
     this.productosById.clear();

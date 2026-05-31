@@ -20,6 +20,9 @@ export class BackendApiService {
         this.categoriasById = new Map();
     }
     async bootstrap() {
+        await this.refreshCatalog();
+    }
+    async refreshCatalog() {
         await this.loadCatalog();
     }
     getCatalogo() {
@@ -71,7 +74,7 @@ export class BackendApiService {
         return this.mapCliente(payload.cliente, payload.usuario, payload.sesion);
     }
     async register(payload) {
-        const response = await this.requestJson("/api/auth/register", {
+        await this.requestJson("/api/auth/register", {
             method: "POST",
             json: {
                 nombre: payload.nombre,
@@ -80,13 +83,7 @@ export class BackendApiService {
                 fecha_nacimiento: payload.fechaNacimiento
             }
         });
-        this.runtimeState.saveAuthState({
-            sessionId: response.sesion.id,
-            token: response.sesion.token,
-            clienteId: response.cliente.id,
-            email: response.usuario.email
-        });
-        return this.mapCliente(response.cliente, response.usuario, response.sesion);
+        return await this.login(payload.email, payload.password);
     }
     async logout() {
         const authState = this.runtimeState.loadAuthState();
@@ -273,8 +270,8 @@ export class BackendApiService {
     }
     async loadCatalog() {
         const [categorias, productos] = await Promise.all([
-            this.requestJson("/api/categorias"),
-            this.requestJson("/api/productos")
+            this.requestJson("/api/categorias", { cache: "no-store" }),
+            this.requestJson("/api/productos", { cache: "no-store" })
         ]);
         this.productosById.clear();
         this.variantesById.clear();

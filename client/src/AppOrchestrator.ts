@@ -662,6 +662,9 @@ export class AppOrchestrator {
 
     const pedido = await this.backend.checkout(this.usuarioActual);
     this.usuarioActual.registrarPedido(pedido);
+    await this.backend.refreshCatalog();
+    this.catalogo = this.backend.getCatalogo();
+    this.categorias = this.backend.getCategorias();
     this.carrito = await this.backend.ensureCartForCurrentMode(this.usuarioActual);
     this.cartDrawerOpen = false;
     this.renderAll();
